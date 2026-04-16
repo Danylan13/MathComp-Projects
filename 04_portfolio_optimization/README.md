@@ -24,6 +24,7 @@ The project:
 - searches the simplex for a minimum-variance allocation with a return floor
 - backtests the allocation on a holdout segment
 - computes volatility, Value at Risk, Conditional Value at Risk, and maximum drawdown
+- exports an efficient frontier table and a compact stress-test table
 
 ## Run
 

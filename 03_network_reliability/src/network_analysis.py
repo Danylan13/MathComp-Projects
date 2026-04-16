@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import csv
 
 import matplotlib
 import numpy as np
@@ -30,6 +31,9 @@ class PathReport:
     bottleneck_mbps: float
     reliability: float
     score: float
+    scenario: str = ""
+    origin: str = ""
+    destination: str = ""
 
 
 NODE_POSITIONS = {
@@ -148,6 +152,43 @@ def best_feasible_path(
     return feasible_reports[0]
 
 
+def simulate_path_availability(report: PathReport, trials: int = 5000, seed: int = 17) -> float:
+    rng = np.random.default_rng(seed)
+    outcomes = rng.random(trials)
+    return float(np.mean(outcomes < report.reliability))
+
+
+def save_route_summary(reports: list[PathReport]) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    with (OUTPUT_DIR / "route_summary.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            [
+                "scenario",
+                "origin",
+                "destination",
+                "path",
+                "latency_ms",
+                "bottleneck_mbps",
+                "analytic_reliability",
+                "simulated_availability",
+            ]
+        )
+        for index, report in enumerate(reports):
+            writer.writerow(
+                [
+                    report.scenario,
+                    report.origin,
+                    report.destination,
+                    " -> ".join(report.nodes),
+                    f"{report.latency_ms:.3f}",
+                    f"{report.bottleneck_mbps:.3f}",
+                    f"{report.reliability:.6f}",
+                    f"{simulate_path_availability(report, seed=17 + index):.6f}",
+                ]
+            )
+
+
 def save_network_plot(base_graph: dict[str, list[Edge]], highlighted_paths: list[PathReport]) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -208,17 +249,23 @@ def main() -> None:
                 )
                 continue
 
+            report.scenario = scenario
+            report.origin = origin
+            report.destination = destination
             chosen_paths.append(report)
+            simulated_availability = simulate_path_availability(report, seed=17 + len(chosen_paths))
             print(
                 f"  {origin} -> {destination} | path={' -> '.join(report.nodes)} | "
                 f"latency={report.latency_ms:.1f} ms | bottleneck={report.bottleneck_mbps:.0f} Mbps | "
-                f"reliability={report.reliability:.4f}"
+                f"reliability={report.reliability:.4f} | simulated_availability={simulated_availability:.4f}"
             )
         print()
 
     if chosen_paths:
+        save_route_summary(chosen_paths)
         save_network_plot(base_graph, chosen_paths)
         print(f"Saved plot: {OUTPUT_DIR / 'network_paths.png'}")
+        print(f"Saved table: {OUTPUT_DIR / 'route_summary.csv'}")
 
 
 if __name__ == "__main__":

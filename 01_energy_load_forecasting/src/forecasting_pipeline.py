@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+import csv
 
 import matplotlib
 import numpy as np
@@ -106,6 +107,42 @@ def mape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return float(np.mean(np.abs((y_true - y_pred) / y_true)) * 100)
 
 
+def tune_alpha(
+    x_train: np.ndarray, y_train: np.ndarray, feature_names: list[str], candidates: list[float]
+) -> tuple[float, list[tuple[float, float]]]:
+    metrics: list[tuple[float, float]] = []
+    validation_window = 16
+    fold_starts = [
+        len(x_train) - 3 * validation_window,
+        len(x_train) - 2 * validation_window,
+        len(x_train) - validation_window,
+    ]
+
+    for alpha in candidates:
+        fold_scores = []
+        for split_index in fold_starts:
+            x_fit, x_val = x_train[:split_index], x_train[split_index : split_index + validation_window]
+            y_fit, y_val = y_train[:split_index], y_train[split_index : split_index + validation_window]
+            x_fit_scaled, x_val_scaled = standardize(x_fit, x_val)
+            model = fit_ridge_regression(x_fit_scaled, y_fit, feature_names, alpha=alpha)
+            predictions = predict(x_val_scaled, model)
+            fold_scores.append(rmse(y_val, predictions))
+        metrics.append((alpha, float(np.mean(fold_scores))))
+
+    best_alpha, _ = min(metrics, key=lambda item: item[1])
+    return best_alpha, metrics
+
+
+def save_validation_metrics(metrics: list[tuple[float, float]]) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    csv_path = OUTPUT_DIR / "alpha_search.csv"
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["alpha", "validation_rmse"])
+        for alpha, value in metrics:
+            writer.writerow([alpha, f"{value:.6f}"])
+
+
 def save_plots(labels: np.ndarray, y_true: np.ndarray, baseline: np.ndarray, forecast: np.ndarray) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     x_axis = np.arange(len(labels))
@@ -145,7 +182,10 @@ def main() -> None:
     test_labels = labels[split_index:]
 
     x_train_scaled, x_test_scaled = standardize(x_train, x_test)
-    model = fit_ridge_regression(x_train_scaled, y_train, feature_names)
+    alpha_candidates = [0.05, 0.1, 0.4, 1.0, 3.0, 10.0, 25.0]
+    best_alpha, validation_metrics = tune_alpha(x_train, y_train, feature_names, alpha_candidates)
+    save_validation_metrics(validation_metrics)
+    model = fit_ridge_regression(x_train_scaled, y_train, feature_names, alpha=best_alpha)
 
     baseline_pred = x_test[:, -1]
     model_pred = predict(x_test_scaled, model)
@@ -160,6 +200,7 @@ def main() -> None:
     print("Energy Load Forecasting")
     print("-" * 72)
     print(f"Train samples: {len(x_train)} | Test samples: {len(x_test)}")
+    print(f"Selected alpha: {best_alpha:.2f}")
     print(f"Naive lag-24 RMSE: {rmse(y_test, baseline_pred):.3f} MW")
     print(f"Ridge model RMSE:  {rmse(y_test, model_pred):.3f} MW")
     print(f"Naive lag-24 MAPE: {mape(y_test, baseline_pred):.3f}%")
@@ -177,6 +218,7 @@ def main() -> None:
         )
     print()
     print(f"Saved plot: {OUTPUT_DIR / 'forecast_diagnostics.png'}")
+    print(f"Saved table: {OUTPUT_DIR / 'alpha_search.csv'}")
 
 
 if __name__ == "__main__":

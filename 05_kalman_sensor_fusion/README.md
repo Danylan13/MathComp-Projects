@@ -16,7 +16,7 @@ Columns:
 
 ## Method
 
-A linear Kalman filter is used with a constant-velocity state model. The state vector contains position and velocity in two dimensions, and the measurement vector combines GPS and IMU observations.
+A linear Kalman filter is used with a constant-velocity state model. The state vector contains position and velocity in two dimensions, and the measurement vector combines GPS and IMU observations. A Rauch-Tung-Striebel smoother is then applied on top of the filtered states to improve the final trajectory estimate.
 
 The project compares:
 
@@ -34,6 +34,7 @@ python 05_kalman_sensor_fusion/src/kalman_fusion.py
 The script reports:
 
 - raw and filtered RMSE
+- smoothed RMSE and smoother gain over the filter
 - state estimates at the start and end of the trajectory
 - improvement from sensor fusion
 - saved trajectory plot in `outputs/trajectory_comparison.png`

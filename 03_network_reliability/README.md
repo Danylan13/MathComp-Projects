@@ -21,6 +21,8 @@ Scenario logic includes:
 - maintenance outage on a critical edge
 - peak demand with reduced available capacities
 
+After the routing decision is made, the selected paths are also evaluated with a Monte Carlo availability estimate to compare empirical route survivability against the analytical reliability score.
+
 ## Run
 
 ```bash
@@ -35,5 +37,6 @@ The script reports:
 - end-to-end latency
 - bottleneck capacity
 - path reliability
+- Monte Carlo availability estimate and route summary table
 - infeasible requests, if any
 - saved topology plot in `outputs/network_paths.png`

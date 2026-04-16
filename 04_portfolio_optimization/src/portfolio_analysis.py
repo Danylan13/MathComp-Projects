@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from itertools import product
 from pathlib import Path
+import csv
 
 import matplotlib
 import numpy as np
@@ -83,6 +84,38 @@ def annualized_summary(simple_returns: np.ndarray) -> tuple[float, float, float,
     return annual_return, annual_vol, var_95, cvar_95
 
 
+def frontier_points(train_returns: np.ndarray) -> list[tuple[float, float, tuple[float, ...]]]:
+    covariance = np.cov(train_returns, rowvar=False)
+    mean_returns = train_returns.mean(axis=0)
+    points = []
+    for weights in generate_weight_grid(0.1):
+        expected_return = float(weights @ mean_returns)
+        volatility = float(np.sqrt(weights @ covariance @ weights))
+        points.append((expected_return, volatility, tuple(weights.tolist())))
+    return points
+
+
+def save_tables(asset_names: list[str], optimized_weights: np.ndarray, points: list[tuple[float, float, tuple[float, ...]]]) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    with (OUTPUT_DIR / "efficient_frontier.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["expected_return", "volatility", *asset_names])
+        for expected_return, volatility, weights in points:
+            writer.writerow([f"{expected_return:.6f}", f"{volatility:.6f}", *[f"{weight:.2f}" for weight in weights]])
+
+    stress_scenarios = {
+        "inflation_shock": np.array([-0.030, -0.014, -0.045, -0.006]),
+        "growth_rally": np.array([0.024, 0.011, 0.032, 0.008]),
+        "risk_off": np.array([-0.020, -0.018, -0.027, -0.009]),
+    }
+    with (OUTPUT_DIR / "stress_test.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["scenario", "optimized_return"])
+        for name, vector in stress_scenarios.items():
+            writer.writerow([name, f"{float(optimized_weights @ vector):.6f}"])
+
+
 def save_plots(optimized_wealth: np.ndarray, equal_wealth: np.ndarray) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     x_axis = np.arange(1, len(optimized_wealth) + 1)
@@ -124,6 +157,8 @@ def main() -> None:
 
     optimized_summary = annualized_summary(optimized_simple)
     equal_summary = annualized_summary(equal_simple)
+    points = frontier_points(train_returns)
+    save_tables(asset_names, optimized_weights, points)
     save_plots(optimized_wealth, equal_wealth)
 
     print("Portfolio Optimization and Risk")
@@ -151,6 +186,7 @@ def main() -> None:
     print(f"  equal-wt ={equal_wealth[-1]:.4f}")
     print()
     print(f"Saved plot: {OUTPUT_DIR / 'portfolio_backtest.png'}")
+    print(f"Saved tables: {OUTPUT_DIR / 'efficient_frontier.csv'}, {OUTPUT_DIR / 'stress_test.csv'}")
 
 
 if __name__ == "__main__":

@@ -27,6 +27,8 @@ Two detection strategies are implemented:
 
 This makes it possible to compare unsupervised health monitoring against a supervised classifier.
 
+The classifier threshold is not fixed by hand: it is selected on a validation slice to maximize F1 score before final evaluation on the test windows.
+
 ## Run
 
 ```bash
@@ -38,6 +40,7 @@ python 02_predictive_maintenance/src/maintenance_model.py
 The script reports:
 
 - precision, recall, and F1 score
+- selected logistic threshold and threshold search table
 - confusion matrices for both methods
 - the highest-risk windows in the test segment
 - saved diagnostic plot in `outputs/maintenance_diagnostics.png`

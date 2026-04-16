@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import csv
 
 import matplotlib
 import numpy as np
@@ -90,6 +91,46 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> MetricSet:
     return MetricSet(precision, recall, f1, (tp, fp, tn, fn))
 
 
+def select_threshold(probabilities: np.ndarray, y_true: np.ndarray) -> tuple[float, list[tuple[float, float]]]:
+    candidates = np.arange(0.30, 0.81, 0.05)
+    scores: list[tuple[float, float]] = []
+    preferred: list[tuple[float, float]] = []
+    for threshold in candidates:
+        predictions = (probabilities >= threshold).astype(int)
+        metrics = compute_metrics(y_true, predictions)
+        scores.append((float(threshold), metrics.f1))
+        if metrics.precision >= 0.60:
+            preferred.append((float(threshold), metrics.f1))
+    best_threshold, _ = max(preferred or scores, key=lambda item: item[1])
+    return best_threshold, scores
+
+
+def save_reports(
+    test_window_ids: np.ndarray,
+    logistic_prob: np.ndarray,
+    y_test: np.ndarray,
+    threshold_scores: list[tuple[float, float]],
+) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    with (OUTPUT_DIR / "threshold_search.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["threshold", "validation_f1"])
+        for threshold, score in threshold_scores:
+            writer.writerow([f"{threshold:.2f}", f"{score:.6f}"])
+
+    ranked_rows = sorted(
+        zip(test_window_ids.tolist(), logistic_prob.tolist(), y_test.tolist()),
+        key=lambda row: row[1],
+        reverse=True,
+    )
+    with (OUTPUT_DIR / "test_alerts.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["window_id", "predicted_probability", "actual_failure"])
+        for window_id, probability, actual in ranked_rows:
+            writer.writerow([window_id, f"{probability:.6f}", actual])
+
+
 def save_plots(
     test_window_ids: np.ndarray,
     y_test: np.ndarray,
@@ -132,6 +173,9 @@ def main() -> None:
     test_window_ids = window_ids[split_index:]
 
     x_train_scaled, x_test_scaled, _, _ = standardize(x_train, x_test)
+    val_split = 24
+    x_fit_scaled, x_val_scaled = x_train_scaled[:val_split], x_train_scaled[val_split:]
+    y_fit, y_val = y_train[:val_split], y_train[val_split:]
     healthy_train = x_train_scaled[y_train == 0]
     healthy_mean = healthy_train.mean(axis=0)
     healthy_covariance = np.cov(healthy_train, rowvar=False)
@@ -141,11 +185,16 @@ def main() -> None:
     mahalanobis_threshold = float(np.quantile(train_health_scores, 0.95))
     mahalanobis_pred = (test_health_scores >= mahalanobis_threshold).astype(int)
 
+    tuned_weights, tuned_bias = fit_logistic_regression(x_fit_scaled, y_fit)
+    _, validation_prob = classify_logistic(x_val_scaled, tuned_weights, tuned_bias, threshold=0.5)
+    best_threshold, threshold_scores = select_threshold(validation_prob, y_val)
+
     weights, bias = fit_logistic_regression(x_train_scaled, y_train)
-    logistic_pred, logistic_prob = classify_logistic(x_test_scaled, weights, bias)
+    logistic_pred, logistic_prob = classify_logistic(x_test_scaled, weights, bias, threshold=best_threshold)
 
     mahalanobis_metrics = compute_metrics(y_test, mahalanobis_pred)
     logistic_metrics = compute_metrics(y_test, logistic_pred)
+    save_reports(test_window_ids, logistic_prob, y_test, threshold_scores)
     save_plots(test_window_ids, y_test, logistic_prob, test_health_scores, mahalanobis_threshold)
 
     ranked_features = sorted(zip(feature_names, weights), key=lambda item: abs(item[1]), reverse=True)
@@ -155,6 +204,7 @@ def main() -> None:
     print("-" * 72)
     print(f"Train windows: {len(x_train)} | Test windows: {len(x_test)}")
     print(f"Mahalanobis threshold: {mahalanobis_threshold:.3f}")
+    print(f"Selected logistic threshold: {best_threshold:.2f}")
     print()
     print("Mahalanobis detector:")
     print(
@@ -184,6 +234,7 @@ def main() -> None:
         )
     print()
     print(f"Saved plot: {OUTPUT_DIR / 'maintenance_diagnostics.png'}")
+    print(f"Saved tables: {OUTPUT_DIR / 'threshold_search.csv'}, {OUTPUT_DIR / 'test_alerts.csv'}")
 
 
 if __name__ == "__main__":

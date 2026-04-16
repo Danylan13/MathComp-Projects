@@ -26,7 +26,7 @@ The pipeline builds a feature matrix with:
 - cyclic hour and day-of-week encodings
 - lag-1 and lag-24 demand features
 
-The model is a ridge regressor evaluated on a walk-forward split. Results are compared to a naive day-ahead baseline.
+The model is a ridge regressor evaluated on a walk-forward split. A small time-series validation search is used to choose the regularization strength before comparing the final model to a naive day-ahead baseline.
 
 ## Run
 
@@ -39,6 +39,7 @@ python 01_energy_load_forecasting/src/forecasting_pipeline.py
 The script reports:
 
 - baseline vs model RMSE and MAPE
+- selected regularization strength and alpha search table
 - the most influential coefficients
 - the final 24-hour forecast window
 - saved diagnostic plot in `outputs/forecast_diagnostics.png`

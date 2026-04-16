@@ -1,0 +1,7 @@
+scenario,origin,destination,path,latency_ms,bottleneck_mbps,analytic_reliability,simulated_availability
+baseline,Kyiv,Berlin,Kyiv -> Lviv -> Berlin,39.000,920.000,0.948660,0.949600
+baseline,Odessa,Warsaw,Odessa -> Lviv -> Warsaw,38.000,760.000,0.948612,0.947200
+maintenance,Kyiv,Berlin,Kyiv -> Lviv -> Berlin,39.000,920.000,0.948660,0.946600
+maintenance,Dnipro,Warsaw,Dnipro -> Kharkiv -> Warsaw,36.000,720.000,0.947570,0.946000
+peak,Kharkiv,Berlin,Kharkiv -> Dnipro -> Berlin,44.000,480.000,0.941660,0.944000
+peak,Odessa,Berlin,Odessa -> Lviv -> Berlin,45.000,570.000,0.944748,0.945000
