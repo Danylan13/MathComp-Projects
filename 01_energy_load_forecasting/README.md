@@ -41,3 +41,4 @@ The script reports:
 - baseline vs model RMSE and MAPE
 - the most influential coefficients
 - the final 24-hour forecast window
+- saved diagnostic plot in `outputs/forecast_diagnostics.png`

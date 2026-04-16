@@ -8,6 +8,7 @@ Each project includes:
 - input data stored in the repository
 - reproducible Python code
 - quantitative evaluation
+- generated output artifacts such as plots or diagnostics
 - concise documentation of methods and assumptions
 
 ## Projects

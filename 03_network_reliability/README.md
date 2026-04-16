@@ -36,3 +36,4 @@ The script reports:
 - bottleneck capacity
 - path reliability
 - infeasible requests, if any
+- saved topology plot in `outputs/network_paths.png`

@@ -3,11 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import matplotlib
 import numpy as np
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 EDGE_PATH = Path(__file__).resolve().parents[1] / "data" / "network_edges.csv"
 DEMAND_PATH = Path(__file__).resolve().parents[1] / "data" / "demand_scenarios.csv"
+OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs"
 
 
 @dataclass
@@ -25,6 +30,19 @@ class PathReport:
     bottleneck_mbps: float
     reliability: float
     score: float
+
+
+NODE_POSITIONS = {
+    "Kyiv": (0.0, 0.4),
+    "Lviv": (-2.4, 1.0),
+    "Odessa": (-0.8, -1.6),
+    "Kharkiv": (2.6, 0.8),
+    "Dnipro": (1.3, -0.4),
+    "Poltava": (1.8, 0.3),
+    "Zaporizhzhia": (1.5, -1.2),
+    "Warsaw": (-3.2, 2.0),
+    "Berlin": (-4.7, 2.3),
+}
 
 
 def load_graph() -> dict[str, list[Edge]]:
@@ -130,9 +148,43 @@ def best_feasible_path(
     return feasible_reports[0]
 
 
+def save_network_plot(base_graph: dict[str, list[Edge]], highlighted_paths: list[PathReport]) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    drawn_edges: set[tuple[str, str]] = set()
+
+    for source, edges in base_graph.items():
+        x0, y0 = NODE_POSITIONS[source]
+        for edge in edges:
+            key = tuple(sorted((source, edge.target)))
+            if key in drawn_edges:
+                continue
+            drawn_edges.add(key)
+            x1, y1 = NODE_POSITIONS[edge.target]
+            ax.plot([x0, x1], [y0, y1], color="#c7c7c7", linewidth=1.5, zorder=1)
+
+    colors = ["#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#ff7f0e", "#8c564b"]
+    for index, report in enumerate(highlighted_paths):
+        color = colors[index % len(colors)]
+        for source, target in zip(report.nodes[:-1], report.nodes[1:]):
+            x0, y0 = NODE_POSITIONS[source]
+            x1, y1 = NODE_POSITIONS[target]
+            ax.plot([x0, x1], [y0, y1], color=color, linewidth=3.2, zorder=2)
+
+    for node, (x, y) in NODE_POSITIONS.items():
+        ax.scatter(x, y, s=180, color="#1f3c88", zorder=3)
+        ax.text(x, y + 0.14, node, ha="center", va="bottom", fontsize=9)
+
+    ax.set_title("Network Topology with Selected Scenario Paths")
+    ax.axis("off")
+    fig.savefig(OUTPUT_DIR / "network_paths.png", dpi=160, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main() -> None:
     base_graph = load_graph()
     demands = load_demands()
+    chosen_paths: list[PathReport] = []
 
     print("Network Reliability Analysis")
     print("-" * 72)
@@ -156,12 +208,17 @@ def main() -> None:
                 )
                 continue
 
+            chosen_paths.append(report)
             print(
                 f"  {origin} -> {destination} | path={' -> '.join(report.nodes)} | "
                 f"latency={report.latency_ms:.1f} ms | bottleneck={report.bottleneck_mbps:.0f} Mbps | "
                 f"reliability={report.reliability:.4f}"
             )
         print()
+
+    if chosen_paths:
+        save_network_plot(base_graph, chosen_paths)
+        print(f"Saved plot: {OUTPUT_DIR / 'network_paths.png'}")
 
 
 if __name__ == "__main__":

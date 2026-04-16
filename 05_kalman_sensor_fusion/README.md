@@ -36,3 +36,4 @@ The script reports:
 - raw and filtered RMSE
 - state estimates at the start and end of the trajectory
 - improvement from sensor fusion
+- saved trajectory plot in `outputs/trajectory_comparison.png`

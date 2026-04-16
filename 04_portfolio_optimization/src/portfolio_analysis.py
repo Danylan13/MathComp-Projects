@@ -3,10 +3,15 @@ from __future__ import annotations
 from itertools import product
 from pathlib import Path
 
+import matplotlib
 import numpy as np
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "asset_prices.csv"
+OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs"
 
 
 def load_prices() -> tuple[np.ndarray, list[str]]:
@@ -78,6 +83,32 @@ def annualized_summary(simple_returns: np.ndarray) -> tuple[float, float, float,
     return annual_return, annual_vol, var_95, cvar_95
 
 
+def save_plots(optimized_wealth: np.ndarray, equal_wealth: np.ndarray) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    x_axis = np.arange(1, len(optimized_wealth) + 1)
+    optimized_drawdown = optimized_wealth / np.maximum.accumulate(optimized_wealth) - 1.0
+    equal_drawdown = equal_wealth / np.maximum.accumulate(equal_wealth) - 1.0
+
+    fig, axes = plt.subplots(2, 1, figsize=(11, 8), constrained_layout=True)
+    axes[0].plot(x_axis, optimized_wealth, label="optimized", linewidth=2.2, color="#117a65")
+    axes[0].plot(x_axis, equal_wealth, label="equal-weight", linewidth=2.0, color="#c0392b")
+    axes[0].set_title("Out-of-Sample Wealth Trajectory")
+    axes[0].set_ylabel("Wealth index")
+    axes[0].legend()
+    axes[0].grid(alpha=0.25)
+
+    axes[1].plot(x_axis, optimized_drawdown, label="optimized drawdown", linewidth=2.2, color="#117a65")
+    axes[1].plot(x_axis, equal_drawdown, label="equal-weight drawdown", linewidth=2.0, color="#c0392b")
+    axes[1].set_title("Drawdown Comparison")
+    axes[1].set_xlabel("Test day")
+    axes[1].set_ylabel("Drawdown")
+    axes[1].legend()
+    axes[1].grid(alpha=0.25)
+
+    fig.savefig(OUTPUT_DIR / "portfolio_backtest.png", dpi=160)
+    plt.close(fig)
+
+
 def main() -> None:
     prices, asset_names = load_prices()
     returns = log_returns(prices)
@@ -93,6 +124,7 @@ def main() -> None:
 
     optimized_summary = annualized_summary(optimized_simple)
     equal_summary = annualized_summary(equal_simple)
+    save_plots(optimized_wealth, equal_wealth)
 
     print("Portfolio Optimization and Risk")
     print("-" * 72)
@@ -117,6 +149,8 @@ def main() -> None:
     print("Final wealth on test window:")
     print(f"  optimized={optimized_wealth[-1]:.4f}")
     print(f"  equal-wt ={equal_wealth[-1]:.4f}")
+    print()
+    print(f"Saved plot: {OUTPUT_DIR / 'portfolio_backtest.png'}")
 
 
 if __name__ == "__main__":

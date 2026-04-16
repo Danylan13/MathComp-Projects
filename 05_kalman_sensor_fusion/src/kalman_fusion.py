@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import matplotlib
 import numpy as np
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "tracking_measurements.csv"
+OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs"
 
 
 def load_measurements() -> np.ndarray:
@@ -64,6 +69,33 @@ def rmse(reference: np.ndarray, estimate: np.ndarray) -> float:
     return float(np.sqrt(np.mean(np.sum((reference - estimate) ** 2, axis=1))))
 
 
+def save_plots(true_positions: np.ndarray, gps_positions: np.ndarray, filtered_positions: np.ndarray) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
+
+    axes[0].plot(true_positions[:, 0], true_positions[:, 1], label="true path", linewidth=2.4, color="#1f3c88")
+    axes[0].scatter(gps_positions[:, 0], gps_positions[:, 1], label="gps", s=18, color="#c0392b", alpha=0.6)
+    axes[0].plot(filtered_positions[:, 0], filtered_positions[:, 1], label="kalman", linewidth=2.0, color="#117a65")
+    axes[0].set_title("Trajectory Reconstruction")
+    axes[0].set_xlabel("x")
+    axes[0].set_ylabel("y")
+    axes[0].legend()
+    axes[0].grid(alpha=0.25)
+
+    raw_error = np.linalg.norm(true_positions - gps_positions, axis=1)
+    filtered_error = np.linalg.norm(true_positions - filtered_positions, axis=1)
+    axes[1].plot(raw_error, label="gps error", color="#c0392b", linewidth=2.0)
+    axes[1].plot(filtered_error, label="kalman error", color="#117a65", linewidth=2.0)
+    axes[1].set_title("Position Error Over Time")
+    axes[1].set_xlabel("time step")
+    axes[1].set_ylabel("Euclidean error")
+    axes[1].legend()
+    axes[1].grid(alpha=0.25)
+
+    fig.savefig(OUTPUT_DIR / "trajectory_comparison.png", dpi=160)
+    plt.close(fig)
+
+
 def main() -> None:
     measurements = load_measurements()
     true_positions = np.column_stack([measurements["true_x"], measurements["true_y"]]).astype(float)
@@ -74,6 +106,7 @@ def main() -> None:
     raw_rmse = rmse(true_positions, gps_positions)
     filtered_rmse = rmse(true_positions, filtered_positions)
     improvement = (raw_rmse - filtered_rmse) / raw_rmse * 100.0
+    save_plots(true_positions, gps_positions, filtered_positions)
 
     print("Kalman Sensor Fusion")
     print("-" * 72)
@@ -88,6 +121,8 @@ def main() -> None:
             f"  t={measurements['t'][idx]:>4.1f} | x={state[0]:7.3f} y={state[1]:7.3f} "
             f"| vx={state[2]:6.3f} vy={state[3]:6.3f}"
         )
+    print()
+    print(f"Saved plot: {OUTPUT_DIR / 'trajectory_comparison.png'}")
 
 
 if __name__ == "__main__":

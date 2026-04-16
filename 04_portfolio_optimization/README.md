@@ -39,3 +39,4 @@ The script reports:
 - benchmark comparison
 - out-of-sample tail-risk metrics
 - backtest wealth trajectory summary
+- saved backtest plot in `outputs/portfolio_backtest.png`

@@ -3,10 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import matplotlib
 import numpy as np
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "sensor_windows.csv"
+OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs"
 
 
 @dataclass
@@ -85,6 +90,40 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> MetricSet:
     return MetricSet(precision, recall, f1, (tp, fp, tn, fn))
 
 
+def save_plots(
+    test_window_ids: np.ndarray,
+    y_test: np.ndarray,
+    logistic_prob: np.ndarray,
+    test_health_scores: np.ndarray,
+    mahalanobis_threshold: float,
+) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    fig, axes = plt.subplots(2, 1, figsize=(11, 8), constrained_layout=True)
+
+    healthy_scores = test_health_scores[y_test == 0]
+    failure_scores = test_health_scores[y_test == 1]
+    axes[0].hist(healthy_scores, bins=7, alpha=0.7, label="healthy", color="#1f77b4")
+    axes[0].hist(failure_scores, bins=7, alpha=0.7, label="failure", color="#d62728")
+    axes[0].axvline(mahalanobis_threshold, color="black", linestyle="--", linewidth=1.2)
+    axes[0].set_title("Mahalanobis Score Separation")
+    axes[0].set_xlabel("Distance")
+    axes[0].set_ylabel("Count")
+    axes[0].legend()
+    axes[0].grid(alpha=0.2)
+
+    colors = np.where(y_test == 1, "#d62728", "#1f77b4")
+    axes[1].bar(test_window_ids.astype(str), logistic_prob, color=colors)
+    axes[1].axhline(0.5, color="black", linestyle="--", linewidth=1.2)
+    axes[1].set_title("Failure Probability by Test Window")
+    axes[1].set_xlabel("Window ID")
+    axes[1].set_ylabel("Predicted failure probability")
+    axes[1].tick_params(axis="x", rotation=45)
+    axes[1].grid(alpha=0.2)
+
+    fig.savefig(OUTPUT_DIR / "maintenance_diagnostics.png", dpi=160)
+    plt.close(fig)
+
+
 def main() -> None:
     x, y, window_ids, feature_names = load_dataset()
     split_index = 32
@@ -107,6 +146,7 @@ def main() -> None:
 
     mahalanobis_metrics = compute_metrics(y_test, mahalanobis_pred)
     logistic_metrics = compute_metrics(y_test, logistic_pred)
+    save_plots(test_window_ids, y_test, logistic_prob, test_health_scores, mahalanobis_threshold)
 
     ranked_features = sorted(zip(feature_names, weights), key=lambda item: abs(item[1]), reverse=True)
     top_windows = np.argsort(logistic_prob)[::-1][:6]
@@ -142,6 +182,8 @@ def main() -> None:
             f"  window={test_window_ids[idx]:>2} | probability={logistic_prob[idx]:.3f} "
             f"| actual={y_test[idx]} | mahalanobis={test_health_scores[idx]:.3f}"
         )
+    print()
+    print(f"Saved plot: {OUTPUT_DIR / 'maintenance_diagnostics.png'}")
 
 
 if __name__ == "__main__":

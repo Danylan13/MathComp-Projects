@@ -40,3 +40,4 @@ The script reports:
 - precision, recall, and F1 score
 - confusion matrices for both methods
 - the highest-risk windows in the test segment
+- saved diagnostic plot in `outputs/maintenance_diagnostics.png`

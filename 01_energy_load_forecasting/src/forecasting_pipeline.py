@@ -4,10 +4,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+import matplotlib
 import numpy as np
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "energy_load.csv"
+OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs"
 
 
 @dataclass
@@ -101,6 +106,35 @@ def mape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return float(np.mean(np.abs((y_true - y_pred) / y_true)) * 100)
 
 
+def save_plots(labels: np.ndarray, y_true: np.ndarray, baseline: np.ndarray, forecast: np.ndarray) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    x_axis = np.arange(len(labels))
+
+    fig, axes = plt.subplots(2, 1, figsize=(11, 8), constrained_layout=True)
+    axes[0].plot(x_axis, y_true, label="actual", linewidth=2.2, color="#1f3c88")
+    axes[0].plot(x_axis, baseline, label="lag24 baseline", linestyle="--", color="#c0392b")
+    axes[0].plot(x_axis, forecast, label="ridge forecast", color="#117a65")
+    axes[0].set_title("Final 24-Hour Forecast Window")
+    axes[0].set_ylabel("Load (MW)")
+    axes[0].set_xticks(x_axis[::3], labels[::3], rotation=30, ha="right")
+    axes[0].legend()
+    axes[0].grid(alpha=0.25)
+
+    residual_baseline = y_true - baseline
+    residual_model = y_true - forecast
+    axes[1].axhline(0.0, color="black", linewidth=1.0)
+    axes[1].plot(x_axis, residual_baseline, label="baseline residual", linestyle="--", color="#c0392b")
+    axes[1].plot(x_axis, residual_model, label="model residual", color="#117a65")
+    axes[1].set_title("Residual Comparison")
+    axes[1].set_ylabel("Residual (MW)")
+    axes[1].set_xticks(x_axis[::3], labels[::3], rotation=30, ha="right")
+    axes[1].legend()
+    axes[1].grid(alpha=0.25)
+
+    fig.savefig(OUTPUT_DIR / "forecast_diagnostics.png", dpi=160)
+    plt.close(fig)
+
+
 def main() -> None:
     raw = load_dataset()
     x, y, feature_names, labels = build_design_matrix(raw)
@@ -121,6 +155,7 @@ def main() -> None:
         key=lambda item: abs(item[1]),
         reverse=True,
     )
+    save_plots(test_labels, y_test, baseline_pred, model_pred)
 
     print("Energy Load Forecasting")
     print("-" * 72)
@@ -140,6 +175,8 @@ def main() -> None:
             f"  {label} | actual={actual:7.2f} | lag24={baseline:7.2f} "
             f"| ridge={forecast:7.2f}"
         )
+    print()
+    print(f"Saved plot: {OUTPUT_DIR / 'forecast_diagnostics.png'}")
 
 
 if __name__ == "__main__":
