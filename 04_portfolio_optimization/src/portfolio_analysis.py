@@ -1,0 +1,123 @@
+from __future__ import annotations
+
+from itertools import product
+from pathlib import Path
+
+import numpy as np
+
+
+DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "asset_prices.csv"
+
+
+def load_prices() -> tuple[np.ndarray, list[str]]:
+    raw = np.genfromtxt(DATA_PATH, delimiter=",", names=True, dtype=None, encoding="utf-8")
+    asset_names = [name for name in raw.dtype.names if name != "date"]
+    prices = np.column_stack([raw[name].astype(float) for name in asset_names])
+    return prices, asset_names
+
+
+def log_returns(prices: np.ndarray) -> np.ndarray:
+    return np.diff(np.log(prices), axis=0)
+
+
+def generate_weight_grid(step: float = 0.1) -> np.ndarray:
+    levels = np.arange(0.0, 1.0 + step / 2, step)
+    weights = []
+    for combo in product(levels, repeat=4):
+        if np.isclose(sum(combo), 1.0):
+            weights.append(combo)
+    return np.asarray(weights, dtype=float)
+
+
+def choose_min_variance_portfolio(train_returns: np.ndarray) -> np.ndarray:
+    mean_returns = train_returns.mean(axis=0)
+    covariance = np.cov(train_returns, rowvar=False)
+    grid = generate_weight_grid(0.1)
+    return_floor = float(np.mean(train_returns @ np.full(train_returns.shape[1], 1 / train_returns.shape[1])))
+
+    feasible_weights = []
+    for weights in grid:
+        expected_return = float(weights @ mean_returns)
+        variance = float(weights @ covariance @ weights)
+        if expected_return >= return_floor:
+            feasible_weights.append((variance, weights))
+
+    if feasible_weights:
+        feasible_weights.sort(key=lambda item: item[0])
+        return feasible_weights[0][1]
+
+    min_variance_index = int(np.argmin([weights @ covariance @ weights for weights in grid]))
+    return grid[min_variance_index]
+
+
+def backtest(returns: np.ndarray, weights: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    simple_returns = np.exp(returns @ weights) - 1.0
+    wealth = np.cumprod(1.0 + simple_returns)
+    return simple_returns, wealth
+
+
+def max_drawdown(wealth: np.ndarray) -> float:
+    peaks = np.maximum.accumulate(wealth)
+    drawdowns = wealth / peaks - 1.0
+    return float(drawdowns.min())
+
+
+def risk_metrics(simple_returns: np.ndarray, alpha: float = 0.95) -> tuple[float, float]:
+    losses = -simple_returns
+    var = float(np.quantile(losses, alpha))
+    cvar = float(losses[losses >= var].mean())
+    return var, cvar
+
+
+def annualized_summary(simple_returns: np.ndarray) -> tuple[float, float, float, float]:
+    avg_daily = float(simple_returns.mean())
+    vol_daily = float(simple_returns.std())
+    annual_return = (1.0 + avg_daily) ** 252 - 1.0
+    annual_vol = vol_daily * np.sqrt(252)
+    var_95, cvar_95 = risk_metrics(simple_returns)
+    return annual_return, annual_vol, var_95, cvar_95
+
+
+def main() -> None:
+    prices, asset_names = load_prices()
+    returns = log_returns(prices)
+    split_index = 42
+    train_returns = returns[:split_index]
+    test_returns = returns[split_index:]
+
+    optimized_weights = choose_min_variance_portfolio(train_returns)
+    equal_weights = np.full(len(asset_names), 1.0 / len(asset_names))
+
+    optimized_simple, optimized_wealth = backtest(test_returns, optimized_weights)
+    equal_simple, equal_wealth = backtest(test_returns, equal_weights)
+
+    optimized_summary = annualized_summary(optimized_simple)
+    equal_summary = annualized_summary(equal_simple)
+
+    print("Portfolio Optimization and Risk")
+    print("-" * 72)
+    print("Optimized weights:")
+    for name, weight in zip(asset_names, optimized_weights):
+        print(f"  {name:<6} {weight:.2f}")
+    print()
+    print("Out-of-sample comparison:")
+    print(
+        f"  optimized  annual_return={optimized_summary[0]:.4f} "
+        f"annual_vol={optimized_summary[1]:.4f} "
+        f"VaR95={optimized_summary[2]:.4f} CVaR95={optimized_summary[3]:.4f} "
+        f"max_drawdown={max_drawdown(optimized_wealth):.4f}"
+    )
+    print(
+        f"  equal-wt   annual_return={equal_summary[0]:.4f} "
+        f"annual_vol={equal_summary[1]:.4f} "
+        f"VaR95={equal_summary[2]:.4f} CVaR95={equal_summary[3]:.4f} "
+        f"max_drawdown={max_drawdown(equal_wealth):.4f}"
+    )
+    print()
+    print("Final wealth on test window:")
+    print(f"  optimized={optimized_wealth[-1]:.4f}")
+    print(f"  equal-wt ={equal_wealth[-1]:.4f}")
+
+
+if __name__ == "__main__":
+    main()

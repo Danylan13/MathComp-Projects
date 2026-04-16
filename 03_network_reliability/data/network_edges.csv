@@ -1,0 +1,17 @@
+source,target,distance_km,latency_ms,failure_prob,capacity_mbps
+Kyiv,Lviv,540,18,0.030,920
+Kyiv,Odessa,475,16,0.026,980
+Kyiv,Kharkiv,480,15,0.024,1050
+Kyiv,Dnipro,390,14,0.021,1100
+Lviv,Warsaw,400,14,0.018,1200
+Lviv,Odessa,790,24,0.034,760
+Odessa,Dnipro,500,17,0.025,940
+Dnipro,Kharkiv,220,9,0.015,1300
+Kharkiv,Poltava,145,7,0.012,1240
+Poltava,Kyiv,345,11,0.017,1180
+Dnipro,Zaporizhzhia,85,4,0.010,1360
+Zaporizhzhia,Odessa,450,15,0.023,970
+Warsaw,Berlin,575,19,0.020,1250
+Lviv,Berlin,690,21,0.022,980
+Kharkiv,Warsaw,890,27,0.038,720
+Dnipro,Berlin,1200,35,0.044,640

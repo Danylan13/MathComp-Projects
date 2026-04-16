@@ -1,0 +1,7 @@
+scenario,origin,destination,required_mbps,max_latency_ms
+baseline,Kyiv,Berlin,420,42
+baseline,Odessa,Warsaw,280,55
+maintenance,Kyiv,Berlin,420,42
+maintenance,Dnipro,Warsaw,310,47
+peak,Kharkiv,Berlin,260,47
+peak,Odessa,Berlin,300,48

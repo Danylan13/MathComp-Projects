@@ -1,91 +1,67 @@
-# Applied Math + Computer Engineering Portfolio
+# Applied Mathematics and Computer Engineering Projects
 
-This repository contains five practical mini-projects designed to showcase skills in applied mathematics, algorithms, programming, and engineering.
+This repository contains five compact but data-driven projects built around realistic engineering analysis tasks. The focus is on mathematical modeling, numerical methods, signal and network analysis, and decision-making under uncertainty.
 
-The portfolio is built to look like a set of compact engineering products rather than classroom exercises. Each project includes:
+Each project includes:
 
-- a clear business or engineering problem
-- a short technical explanation
+- a concrete problem statement
+- input data stored in the repository
 - reproducible Python code
-- a lightweight experiment or simulation
-- practical metrics or outputs
+- quantitative evaluation
+- concise documentation of methods and assumptions
 
-## Portfolio Projects
+## Projects
 
-| Project | Theme | Main Skills |
+| Project | Problem | Main Methods |
 | --- | --- | --- |
-| `01_optimization_lab` | Numerical optimization for predictive modeling | gradient descent, feature scaling, regression, model evaluation |
-| `02_sensor_anomaly_detection` | Sensor monitoring and anomaly detection | statistics, PCA, signal monitoring, thresholding |
-| `03_route_planning` | Graph algorithms for route planning | Dijkstra, A*, heuristics, path reconstruction |
-| `04_portfolio_risk_engine` | Monte Carlo risk estimation | stochastic simulation, covariance, VaR, CVaR |
-| `05_svd_image_compression` | Linear algebra for data compression | SVD, reconstruction error, rank approximation |
+| `01_energy_load_forecasting` | Forecast short-term energy demand from weather and industrial activity data | time-series features, ridge regression, walk-forward evaluation |
+| `02_predictive_maintenance` | Predict equipment failures from aggregated sensor windows | Mahalanobis distance, logistic regression, classification metrics |
+| `03_network_reliability` | Route telecom traffic through a network under latency, capacity, and outage constraints | graph search, constrained routing, reliability scoring |
+| `04_portfolio_optimization` | Build and backtest a portfolio allocation from historical asset prices | return estimation, covariance modeling, grid-search optimization, tail risk |
+| `05_kalman_sensor_fusion` | Estimate a moving object's state from noisy GPS and IMU measurements | linear state-space models, Kalman filtering, RMSE analysis |
 
-## Why This Repository Works For Internships
-
-The projects intentionally combine:
-
-- applied mathematics: linear algebra, optimization, probability, numerical methods
-- computer engineering thinking: simulation, system constraints, monitoring, performance trade-offs
-- software engineering hygiene: structure, documentation, reproducibility, clean code
-
-This makes the repository suitable for applications in:
-
-- quantitative internships
-- data science and machine learning internships
-- software engineering internships with a strong algorithmic component
-- embedded, systems, and signal-processing adjacent roles
-
-## Recommended Repository Structure
+## Repository Layout
 
 ```text
 MathComp-Projects/
 |-- README.md
 |-- requirements.txt
-|-- .gitignore
-|-- LINKEDIN_PROFILE.md
-|-- 01_optimization_lab/
-|-- 02_sensor_anomaly_detection/
-|-- 03_route_planning/
-|-- 04_portfolio_risk_engine/
-`-- 05_svd_image_compression/
+|-- 01_energy_load_forecasting/
+|-- 02_predictive_maintenance/
+|-- 03_network_reliability/
+|-- 04_portfolio_optimization/
+`-- 05_kalman_sensor_fusion/
 ```
 
 ## Quick Start
 
-1. Create a virtual environment.
+1. Create and activate a virtual environment.
 2. Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Run any project from the repository root. Example:
+3. Run any project from the repository root:
 
 ```bash
-python 01_optimization_lab/src/optimization_lab.py
-python 02_sensor_anomaly_detection/src/sensor_monitor.py
-python 03_route_planning/src/route_planner.py
-python 04_portfolio_risk_engine/src/risk_engine.py
-python 05_svd_image_compression/src/svd_compression.py
+python 01_energy_load_forecasting/src/forecasting_pipeline.py
+python 02_predictive_maintenance/src/maintenance_model.py
+python 03_network_reliability/src/network_analysis.py
+python 04_portfolio_optimization/src/portfolio_analysis.py
+python 05_kalman_sensor_fusion/src/kalman_fusion.py
 ```
 
-## Positioning Tips
+## Design Principles
 
-When publishing this repository on GitHub:
+- keep every project self-contained
+- use transparent numerical methods instead of black-box tooling
+- prefer measurable outputs over visual polish
+- document assumptions directly in code and README files
 
-- pin it on your profile
-- write a short repository description focused on impact
-- keep the README visual and easy to scan
-- use consistent commit messages
-- add a LinkedIn project entry for one or two of the strongest subprojects
+## Possible Extensions
 
-Suggested repository description:
-
-> Portfolio of 5 practical projects in applied mathematics and computer engineering: optimization, anomaly detection, graph algorithms, risk simulation, and SVD-based compression.
-
-## Next Improvements
-
-- add visual outputs as images in each project README
-- add unit tests and CI
-- deploy one project as a small web demo
-- replace synthetic data with public datasets
+- add unit tests for numerical routines
+- introduce richer datasets or public benchmarks
+- export results to figures and reports
+- compare current baselines against more advanced models
