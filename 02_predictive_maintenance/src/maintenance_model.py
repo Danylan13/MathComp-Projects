@@ -139,7 +139,7 @@ def save_plots(
     mahalanobis_threshold: float,
 ) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    fig, axes = plt.subplots(2, 1, figsize=(11, 8), constrained_layout=True)
+    fig, axes = plt.subplots(3, 1, figsize=(11, 11), constrained_layout=True)
 
     healthy_scores = test_health_scores[y_test == 0]
     failure_scores = test_health_scores[y_test == 1]
@@ -160,6 +160,17 @@ def save_plots(
     axes[1].set_ylabel("Predicted failure probability")
     axes[1].tick_params(axis="x", rotation=45)
     axes[1].grid(alpha=0.2)
+
+    thresholds = np.arange(0.30, 0.81, 0.05)
+    sweep_scores = []
+    for threshold in thresholds:
+        predictions = (logistic_prob >= threshold).astype(int)
+        sweep_scores.append(compute_metrics(y_test, predictions).f1)
+    axes[2].plot(thresholds, sweep_scores, color="#8e44ad", linewidth=2.2)
+    axes[2].set_title("Test F1 Across Threshold Sweep")
+    axes[2].set_xlabel("Threshold")
+    axes[2].set_ylabel("F1 score")
+    axes[2].grid(alpha=0.2)
 
     fig.savefig(OUTPUT_DIR / "maintenance_diagnostics.png", dpi=160)
     plt.close(fig)

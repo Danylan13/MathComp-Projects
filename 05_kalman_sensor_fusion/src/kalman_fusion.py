@@ -18,7 +18,7 @@ def load_measurements() -> np.ndarray:
     return np.genfromtxt(DATA_PATH, delimiter=",", names=True, dtype=None, encoding="utf-8")
 
 
-def run_kalman_filter(measurements: np.ndarray) -> np.ndarray:
+def run_kalman_filter(measurements: np.ndarray, gps_dropout_every: int = 0) -> np.ndarray:
     dt = float(measurements["t"][1] - measurements["t"][0])
     transition = np.array(
         [
@@ -52,20 +52,28 @@ def run_kalman_filter(measurements: np.ndarray) -> np.ndarray:
         predicted_states.append(state.copy())
         predicted_covariances.append(covariance.copy())
 
-        measurement = np.array(
-            [
-                float(row["gps_x"]),
-                float(row["gps_y"]),
-                float(row["imu_vx"]),
-                float(row["imu_vy"]),
-            ]
-        )
-        innovation = measurement - observation @ state
-        innovation_covariance = observation @ covariance @ observation.T + measurement_noise
-        kalman_gain = covariance @ observation.T @ np.linalg.inv(innovation_covariance)
+        if gps_dropout_every and len(estimates) % gps_dropout_every == 0:
+            observation_step = np.array([[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
+            measurement = np.array([float(row["imu_vx"]), float(row["imu_vy"])])
+            measurement_noise_step = np.diag([0.18, 0.18])
+        else:
+            observation_step = observation
+            measurement = np.array(
+                [
+                    float(row["gps_x"]),
+                    float(row["gps_y"]),
+                    float(row["imu_vx"]),
+                    float(row["imu_vy"]),
+                ]
+            )
+            measurement_noise_step = measurement_noise
+
+        innovation = measurement - observation_step @ state
+        innovation_covariance = observation_step @ covariance @ observation_step.T + measurement_noise_step
+        kalman_gain = covariance @ observation_step.T @ np.linalg.inv(innovation_covariance)
 
         state = state + kalman_gain @ innovation
-        covariance = (np.eye(4) - kalman_gain @ observation) @ covariance
+        covariance = (np.eye(4) - kalman_gain @ observation_step) @ covariance
         estimates.append(state.copy())
         filtered_covariances.append(covariance.copy())
 
@@ -136,11 +144,16 @@ def save_plots(
     plt.close(fig)
 
 
-def save_state_estimates(measurements: np.ndarray, filtered_positions: np.ndarray, smoothed_positions: np.ndarray) -> None:
+def save_state_estimates(
+    measurements: np.ndarray,
+    filtered_positions: np.ndarray,
+    smoothed_positions: np.ndarray,
+    dropout_positions: np.ndarray,
+) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     with (OUTPUT_DIR / "state_estimates.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["t", "filtered_x", "filtered_y", "smoothed_x", "smoothed_y"])
+        writer.writerow(["t", "filtered_x", "filtered_y", "smoothed_x", "smoothed_y", "dropout_x", "dropout_y"])
         for index in range(len(measurements)):
             writer.writerow(
                 [
@@ -149,6 +162,8 @@ def save_state_estimates(measurements: np.ndarray, filtered_positions: np.ndarra
                     f"{filtered_positions[index, 1]:.6f}",
                     f"{smoothed_positions[index, 0]:.6f}",
                     f"{smoothed_positions[index, 1]:.6f}",
+                    f"{dropout_positions[index, 0]:.6f}",
+                    f"{dropout_positions[index, 1]:.6f}",
                 ]
             )
 
@@ -158,24 +173,28 @@ def main() -> None:
     true_positions = np.column_stack([measurements["true_x"], measurements["true_y"]]).astype(float)
     gps_positions = np.column_stack([measurements["gps_x"], measurements["gps_y"]]).astype(float)
     estimates, predicted_states, predicted_covariances, filtered_covariances, transition = run_kalman_filter(measurements)
+    dropout_estimates, _, _, _, _ = run_kalman_filter(measurements, gps_dropout_every=5)
     smoothed_states = run_rts_smoother(
         estimates, predicted_states, predicted_covariances, filtered_covariances, transition
     )
     filtered_positions = estimates[:, :2]
+    dropout_positions = dropout_estimates[:, :2]
     smoothed_positions = smoothed_states[:, :2]
 
     raw_rmse = rmse(true_positions, gps_positions)
     filtered_rmse = rmse(true_positions, filtered_positions)
+    dropout_rmse = rmse(true_positions, dropout_positions)
     smoothed_rmse = rmse(true_positions, smoothed_positions)
     improvement = (raw_rmse - filtered_rmse) / raw_rmse * 100.0
     smoother_gain = (filtered_rmse - smoothed_rmse) / filtered_rmse * 100.0
-    save_state_estimates(measurements, filtered_positions, smoothed_positions)
+    save_state_estimates(measurements, filtered_positions, smoothed_positions, dropout_positions)
     save_plots(true_positions, gps_positions, filtered_positions, smoothed_positions)
 
     print("Kalman Sensor Fusion")
     print("-" * 72)
     print(f"Raw GPS position RMSE: {raw_rmse:.3f}")
     print(f"Filtered position RMSE: {filtered_rmse:.3f}")
+    print(f"Filter RMSE with GPS dropout: {dropout_rmse:.3f}")
     print(f"Smoothed position RMSE: {smoothed_rmse:.3f}")
     print(f"Relative improvement: {improvement:.2f}%")
     print(f"Smoother gain over filter: {smoother_gain:.2f}%")

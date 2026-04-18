@@ -152,6 +152,25 @@ def best_feasible_path(
     return feasible_reports[0]
 
 
+def best_latency_path(
+    graph: dict[str, list[Edge]],
+    origin: str,
+    destination: str,
+    required_mbps: float,
+    max_latency_ms: float,
+) -> PathReport | None:
+    candidates = enumerate_paths(graph, origin, destination, {origin}, [origin], max_hops=6)
+    feasible_reports = []
+    for nodes in candidates:
+        report = path_metrics(graph, nodes)
+        if report.bottleneck_mbps >= required_mbps and report.latency_ms <= max_latency_ms:
+            feasible_reports.append(report)
+    if not feasible_reports:
+        return None
+    feasible_reports.sort(key=lambda report: (report.latency_ms, report.score))
+    return feasible_reports[0]
+
+
 def simulate_path_availability(report: PathReport, trials: int = 5000, seed: int = 17) -> float:
     rng = np.random.default_rng(seed)
     outcomes = rng.random(trials)
@@ -172,9 +191,12 @@ def save_route_summary(reports: list[PathReport]) -> None:
                 "bottleneck_mbps",
                 "analytic_reliability",
                 "simulated_availability",
+                "latency_only_path",
+                "latency_only_reliability",
             ]
         )
         for index, report in enumerate(reports):
+            latency_baseline = getattr(report, "latency_baseline", None)
             writer.writerow(
                 [
                     report.scenario,
@@ -185,6 +207,8 @@ def save_route_summary(reports: list[PathReport]) -> None:
                     f"{report.bottleneck_mbps:.3f}",
                     f"{report.reliability:.6f}",
                     f"{simulate_path_availability(report, seed=17 + index):.6f}",
+                    "" if latency_baseline is None else " -> ".join(latency_baseline.nodes),
+                    "" if latency_baseline is None else f"{latency_baseline.reliability:.6f}",
                 ]
             )
 
@@ -252,12 +276,16 @@ def main() -> None:
             report.scenario = scenario
             report.origin = origin
             report.destination = destination
+            report.latency_baseline = best_latency_path(
+                scenario_graph, origin, destination, required, max_latency
+            )
             chosen_paths.append(report)
             simulated_availability = simulate_path_availability(report, seed=17 + len(chosen_paths))
             print(
                 f"  {origin} -> {destination} | path={' -> '.join(report.nodes)} | "
                 f"latency={report.latency_ms:.1f} ms | bottleneck={report.bottleneck_mbps:.0f} Mbps | "
-                f"reliability={report.reliability:.4f} | simulated_availability={simulated_availability:.4f}"
+                f"reliability={report.reliability:.4f} | simulated_availability={simulated_availability:.4f} | "
+                f"latency_only_reliability={report.latency_baseline.reliability:.4f}"
             )
         print()
 

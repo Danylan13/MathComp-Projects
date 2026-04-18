@@ -39,7 +39,7 @@ After the routing decision is made, the selected paths are also evaluated with a
 | maintenance | Dnipro -> Warsaw | 36.0 | 0.9476 | 0.9492 |
 | peak | Odessa -> Berlin | 45.0 | 0.9447 | 0.9480 |
 
-The full scenario table is available in [RESULTS.md](RESULTS.md) and `outputs/route_summary.csv`.
+The full scenario table is available in [RESULTS.md](RESULTS.md) and `outputs/route_summary.csv`, including comparison against latency-only routing.
 
 ## Run
 
@@ -56,5 +56,6 @@ The script reports:
 - bottleneck capacity
 - path reliability
 - Monte Carlo availability estimate and route summary table
+- comparison against latency-only feasible routing
 - infeasible requests, if any
 - saved topology plot in `outputs/network_paths.png`

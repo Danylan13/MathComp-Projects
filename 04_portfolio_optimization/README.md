@@ -33,6 +33,7 @@ The project:
 - The optimized allocation shifts capital toward lower drawdown and lower tail risk
 - Annualized volatility falls from `0.0312` for equal-weight to `0.0180` for the optimized portfolio
 - Maximum drawdown improves from `-0.0117` to `-0.0043`
+- The portfolio plot also shows the discrete efficient frontier with optimized and equal-weight points highlighted
 
 ## Benchmarks
 

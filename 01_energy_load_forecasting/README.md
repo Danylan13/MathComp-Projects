@@ -41,9 +41,11 @@ The model is a ridge regressor evaluated on a walk-forward split. A small time-s
 | Method | Test RMSE (MW) | Test MAPE |
 | --- | ---: | ---: |
 | Lag-24 baseline | 38.853 | 8.909% |
+| Lag-1 baseline | 14.616 | 2.424% |
+| Ordinary least squares | 18.724 | 4.270% |
 | Ridge regression | 15.314 | 3.388% |
 
-Detailed benchmark artifacts are saved in [RESULTS.md](RESULTS.md) and `outputs/alpha_search.csv`.
+Detailed benchmark artifacts are saved in [RESULTS.md](RESULTS.md), `outputs/alpha_search.csv`, and `outputs/benchmark_summary.csv`.
 
 ## Run
 
@@ -57,6 +59,7 @@ The script reports:
 
 - baseline vs model RMSE and MAPE
 - selected regularization strength and alpha search table
+- benchmark summary table across baseline and linear models
 - the most influential coefficients
 - the final 24-hour forecast window
 - saved diagnostic plot in `outputs/forecast_diagnostics.png`

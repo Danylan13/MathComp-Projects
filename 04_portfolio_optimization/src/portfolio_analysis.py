@@ -116,13 +116,19 @@ def save_tables(asset_names: list[str], optimized_weights: np.ndarray, points: l
             writer.writerow([name, f"{float(optimized_weights @ vector):.6f}"])
 
 
-def save_plots(optimized_wealth: np.ndarray, equal_wealth: np.ndarray) -> None:
+def save_plots(
+    optimized_wealth: np.ndarray,
+    equal_wealth: np.ndarray,
+    frontier: list[tuple[float, float, tuple[float, ...]]],
+    optimized_weights: np.ndarray,
+    equal_weights: np.ndarray,
+) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     x_axis = np.arange(1, len(optimized_wealth) + 1)
     optimized_drawdown = optimized_wealth / np.maximum.accumulate(optimized_wealth) - 1.0
     equal_drawdown = equal_wealth / np.maximum.accumulate(equal_wealth) - 1.0
 
-    fig, axes = plt.subplots(2, 1, figsize=(11, 8), constrained_layout=True)
+    fig, axes = plt.subplots(3, 1, figsize=(11, 11), constrained_layout=True)
     axes[0].plot(x_axis, optimized_wealth, label="optimized", linewidth=2.2, color="#117a65")
     axes[0].plot(x_axis, equal_wealth, label="equal-weight", linewidth=2.0, color="#c0392b")
     axes[0].set_title("Out-of-Sample Wealth Trajectory")
@@ -137,6 +143,22 @@ def save_plots(optimized_wealth: np.ndarray, equal_wealth: np.ndarray) -> None:
     axes[1].set_ylabel("Drawdown")
     axes[1].legend()
     axes[1].grid(alpha=0.25)
+
+    frontier_returns = np.array([point[0] for point in frontier])
+    frontier_vols = np.array([point[1] for point in frontier])
+    frontier_weights = [np.array(point[2]) for point in frontier]
+
+    optimized_idx = int(np.argmin([np.linalg.norm(weights - optimized_weights) for weights in frontier_weights]))
+    equal_idx = int(np.argmin([np.linalg.norm(weights - equal_weights) for weights in frontier_weights]))
+
+    axes[2].scatter(frontier_vols, frontier_returns, s=20, color="#95a5a6", alpha=0.7)
+    axes[2].scatter(frontier_vols[optimized_idx], frontier_returns[optimized_idx], s=80, color="#117a65", label="optimized")
+    axes[2].scatter(frontier_vols[equal_idx], frontier_returns[equal_idx], s=80, color="#c0392b", label="equal-weight")
+    axes[2].set_title("Discrete Efficient Frontier")
+    axes[2].set_xlabel("Volatility")
+    axes[2].set_ylabel("Expected return")
+    axes[2].legend()
+    axes[2].grid(alpha=0.25)
 
     fig.savefig(OUTPUT_DIR / "portfolio_backtest.png", dpi=160)
     plt.close(fig)
@@ -159,7 +181,7 @@ def main() -> None:
     equal_summary = annualized_summary(equal_simple)
     points = frontier_points(train_returns)
     save_tables(asset_names, optimized_weights, points)
-    save_plots(optimized_wealth, equal_wealth)
+    save_plots(optimized_wealth, equal_wealth, points, optimized_weights, equal_weights)
 
     print("Portfolio Optimization and Risk")
     print("-" * 72)

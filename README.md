@@ -1,5 +1,7 @@
 # Applied Mathematics and Computer Engineering Projects
 
+![Tests](https://github.com/Danylan13/MathComp-Projects/actions/workflows/tests.yml/badge.svg)
+
 This repository contains five compact but data-driven projects built around realistic engineering analysis tasks. The focus is on mathematical modeling, numerical methods, signal and network analysis, and decision-making under uncertainty.
 
 Each project includes:
@@ -20,6 +22,14 @@ Each project includes:
 | `03_network_reliability` | Route telecom traffic through a network under latency, capacity, and outage constraints | graph search, constrained routing, reliability scoring |
 | `04_portfolio_optimization` | Build and backtest a portfolio allocation from historical asset prices | return estimation, covariance modeling, grid-search optimization, tail risk |
 | `05_kalman_sensor_fusion` | Estimate a moving object's state from noisy GPS and IMU measurements | linear state-space models, Kalman filtering, RMSE analysis |
+
+## Highlights
+
+- energy forecasting improves test RMSE from `38.853 MW` to `15.314 MW`
+- predictive maintenance compares unsupervised monitoring against supervised classification
+- network reliability includes Monte Carlo availability checks for routed traffic
+- portfolio analysis exports efficient frontier and stress scenarios
+- sensor fusion compares raw GPS, Kalman filtering, and RTS smoothing
 
 ## Repository Layout
 

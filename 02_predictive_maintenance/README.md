@@ -61,3 +61,4 @@ The script reports:
 - confusion matrices for both methods
 - the highest-risk windows in the test segment
 - saved diagnostic plot in `outputs/maintenance_diagnostics.png`
+- includes a threshold-sweep view of test-set F1 behavior

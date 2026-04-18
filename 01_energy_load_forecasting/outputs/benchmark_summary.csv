@@ -1,0 +1,5 @@
+method,rmse_mw,mape_pct
+lag_24_baseline,38.853328,8.908887
+lag_1_baseline,14.615600,2.423555
+ordinary_least_squares,18.723779,4.269547
+ridge_regression,15.314297,3.388038

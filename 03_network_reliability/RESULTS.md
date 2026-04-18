@@ -15,4 +15,5 @@
 
 - Reliability-aware scoring remains stable across baseline, maintenance, and peak scenarios
 - Monte Carlo availability closely tracks the analytical path reliability
+- `outputs/route_summary.csv` also records the latency-only feasible baseline for each routed demand
 - Artifacts: `outputs/network_paths.png`, `outputs/route_summary.csv`

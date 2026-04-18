@@ -95,6 +95,12 @@ def fit_ridge_regression(
     return RidgeModel(weights=solution[:-1], bias=float(solution[-1]), feature_names=feature_names)
 
 
+def fit_ordinary_least_squares(x: np.ndarray, y: np.ndarray, feature_names: list[str]) -> RidgeModel:
+    x_augmented = np.column_stack([x, np.ones(len(x))])
+    solution = np.linalg.pinv(x_augmented) @ y
+    return RidgeModel(weights=solution[:-1], bias=float(solution[-1]), feature_names=feature_names)
+
+
 def predict(x: np.ndarray, model: RidgeModel) -> np.ndarray:
     return x @ model.weights + model.bias
 
@@ -143,6 +149,16 @@ def save_validation_metrics(metrics: list[tuple[float, float]]) -> None:
             writer.writerow([alpha, f"{value:.6f}"])
 
 
+def save_benchmark_table(rows: list[tuple[str, float, float]]) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    csv_path = OUTPUT_DIR / "benchmark_summary.csv"
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["method", "rmse_mw", "mape_pct"])
+        for name, rmse_value, mape_value in rows:
+            writer.writerow([name, f"{rmse_value:.6f}", f"{mape_value:.6f}"])
+
+
 def save_plots(labels: np.ndarray, y_true: np.ndarray, baseline: np.ndarray, forecast: np.ndarray) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     x_axis = np.arange(len(labels))
@@ -186,9 +202,20 @@ def main() -> None:
     best_alpha, validation_metrics = tune_alpha(x_train, y_train, feature_names, alpha_candidates)
     save_validation_metrics(validation_metrics)
     model = fit_ridge_regression(x_train_scaled, y_train, feature_names, alpha=best_alpha)
+    ols_model = fit_ordinary_least_squares(x_train_scaled, y_train, feature_names)
 
+    lag24_pred = x_test[:, -1]
+    lag1_pred = x_test[:, -2]
+    ols_pred = predict(x_test_scaled, ols_model)
     baseline_pred = x_test[:, -1]
     model_pred = predict(x_test_scaled, model)
+    benchmark_rows = [
+        ("lag_24_baseline", rmse(y_test, lag24_pred), mape(y_test, lag24_pred)),
+        ("lag_1_baseline", rmse(y_test, lag1_pred), mape(y_test, lag1_pred)),
+        ("ordinary_least_squares", rmse(y_test, ols_pred), mape(y_test, ols_pred)),
+        ("ridge_regression", rmse(y_test, model_pred), mape(y_test, model_pred)),
+    ]
+    save_benchmark_table(benchmark_rows)
 
     ranked_coefficients = sorted(
         zip(model.feature_names, model.weights),
@@ -201,10 +228,14 @@ def main() -> None:
     print("-" * 72)
     print(f"Train samples: {len(x_train)} | Test samples: {len(x_test)}")
     print(f"Selected alpha: {best_alpha:.2f}")
-    print(f"Naive lag-24 RMSE: {rmse(y_test, baseline_pred):.3f} MW")
-    print(f"Ridge model RMSE:  {rmse(y_test, model_pred):.3f} MW")
-    print(f"Naive lag-24 MAPE: {mape(y_test, baseline_pred):.3f}%")
-    print(f"Ridge model MAPE:  {mape(y_test, model_pred):.3f}%")
+    print(f"Naive lag-24 RMSE: {rmse(y_test, lag24_pred):.3f} MW")
+    print(f"Lag-1 baseline RMSE: {rmse(y_test, lag1_pred):.3f} MW")
+    print(f"OLS model RMSE:      {rmse(y_test, ols_pred):.3f} MW")
+    print(f"Ridge model RMSE:    {rmse(y_test, model_pred):.3f} MW")
+    print(f"Naive lag-24 MAPE: {mape(y_test, lag24_pred):.3f}%")
+    print(f"Lag-1 baseline MAPE: {mape(y_test, lag1_pred):.3f}%")
+    print(f"OLS model MAPE:      {mape(y_test, ols_pred):.3f}%")
+    print(f"Ridge model MAPE:    {mape(y_test, model_pred):.3f}%")
     print()
     print("Most influential standardized coefficients:")
     for name, value in ranked_coefficients[:6]:
@@ -218,7 +249,7 @@ def main() -> None:
         )
     print()
     print(f"Saved plot: {OUTPUT_DIR / 'forecast_diagnostics.png'}")
-    print(f"Saved table: {OUTPUT_DIR / 'alpha_search.csv'}")
+    print(f"Saved tables: {OUTPUT_DIR / 'alpha_search.csv'}, {OUTPUT_DIR / 'benchmark_summary.csv'}")
 
 
 if __name__ == "__main__":

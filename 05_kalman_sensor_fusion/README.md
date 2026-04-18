@@ -28,6 +28,7 @@ The project compares:
 ## Key Results
 
 - Kalman filtering reduces RMSE from `1.793` to `1.579`
+- The filter remains stable under periodic GPS dropout, with RMSE `1.607`
 - RTS smoothing reduces RMSE further to `1.206`
 - The smoother improves on the filtered trajectory by `23.62%`
 
@@ -37,6 +38,7 @@ The project compares:
 | --- | ---: |
 | Raw GPS | 1.793 |
 | Kalman filter | 1.579 |
+| Kalman filter with GPS dropout | 1.607 |
 | RTS smoother | 1.206 |
 
 See [RESULTS.md](RESULTS.md) and `outputs/state_estimates.csv` for the trajectory summary.
