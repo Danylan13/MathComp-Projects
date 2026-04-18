@@ -60,9 +60,17 @@ python 05_kalman_sensor_fusion/src/kalman_fusion.py
 - prefer measurable outputs over visual polish
 - document assumptions directly in code and README files
 
+## Testing
+
+Run the unit test suite from the repository root:
+
+```bash
+python -m unittest discover -s tests
+```
+
 ## Possible Extensions
 
-- add unit tests for numerical routines
 - introduce richer datasets or public benchmarks
 - export results to figures and reports
 - compare current baselines against more advanced models
+- package the projects as small interactive demos

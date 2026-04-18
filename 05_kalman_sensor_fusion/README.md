@@ -1,5 +1,7 @@
 # Kalman Sensor Fusion
 
+![Trajectory comparison](outputs/trajectory_comparison.png)
+
 ## Problem
 
 Recover the trajectory of a moving object from noisy GPS position measurements and IMU-derived velocity estimates.
@@ -22,6 +24,22 @@ The project compares:
 
 - raw GPS position error
 - filtered trajectory error
+
+## Key Results
+
+- Kalman filtering reduces RMSE from `1.793` to `1.579`
+- RTS smoothing reduces RMSE further to `1.206`
+- The smoother improves on the filtered trajectory by `23.62%`
+
+## Benchmarks
+
+| Method | Position RMSE |
+| --- | ---: |
+| Raw GPS | 1.793 |
+| Kalman filter | 1.579 |
+| RTS smoother | 1.206 |
+
+See [RESULTS.md](RESULTS.md) and `outputs/state_estimates.csv` for the trajectory summary.
 
 ## Run
 

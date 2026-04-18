@@ -1,5 +1,7 @@
 # Network Reliability Analysis
 
+![Network paths](outputs/network_paths.png)
+
 ## Problem
 
 Route traffic demands across a backbone network while respecting latency and capacity constraints and accounting for link failure probabilities.
@@ -22,6 +24,22 @@ Scenario logic includes:
 - peak demand with reduced available capacities
 
 After the routing decision is made, the selected paths are also evaluated with a Monte Carlo availability estimate to compare empirical route survivability against the analytical reliability score.
+
+## Key Results
+
+- All six traffic requests remain feasible across the tested operating scenarios
+- Reliability-aware routing achieves end-to-end path reliability around `0.94` to `0.95`
+- Simulated path availability closely matches analytical reliability, validating the link-failure model
+
+## Benchmarks
+
+| Scenario | Route | Latency (ms) | Reliability | Simulated Availability |
+| --- | --- | ---: | ---: | ---: |
+| baseline | Kyiv -> Berlin | 39.0 | 0.9487 | 0.9474 |
+| maintenance | Dnipro -> Warsaw | 36.0 | 0.9476 | 0.9492 |
+| peak | Odessa -> Berlin | 45.0 | 0.9447 | 0.9480 |
+
+The full scenario table is available in [RESULTS.md](RESULTS.md) and `outputs/route_summary.csv`.
 
 ## Run
 
