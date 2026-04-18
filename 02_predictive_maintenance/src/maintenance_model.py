@@ -91,6 +91,16 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> MetricSet:
     return MetricSet(precision, recall, f1, (tp, fp, tn, fn))
 
 
+def business_cost(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    false_positive_cost: float = 1.0,
+    false_negative_cost: float = 6.0,
+) -> float:
+    _, fp, _, fn = compute_metrics(y_true, y_pred).confusion
+    return float(fp * false_positive_cost + fn * false_negative_cost)
+
+
 def select_threshold(probabilities: np.ndarray, y_true: np.ndarray) -> tuple[float, list[tuple[float, float]]]:
     candidates = np.arange(0.30, 0.81, 0.05)
     scores: list[tuple[float, float]] = []
@@ -129,6 +139,52 @@ def save_reports(
         writer.writerow(["window_id", "predicted_probability", "actual_failure"])
         for window_id, probability, actual in ranked_rows:
             writer.writerow([window_id, f"{probability:.6f}", actual])
+
+
+def save_model_comparison(rows: list[tuple[str, float, float, float, float]]) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    with (OUTPUT_DIR / "model_comparison.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["model", "precision", "recall", "f1", "business_cost"])
+        for model_name, precision, recall, f1, cost in rows:
+            writer.writerow(
+                [model_name, f"{precision:.6f}", f"{recall:.6f}", f"{f1:.6f}", f"{cost:.6f}"]
+            )
+
+
+def evaluate_sensor_drift(
+    x_train_scaled: np.ndarray,
+    x_test_scaled: np.ndarray,
+    y_train: np.ndarray,
+    y_test: np.ndarray,
+    threshold: float,
+) -> tuple[MetricSet, np.ndarray]:
+    drifted_test = x_test_scaled.copy()
+    drifted_test[:, 0] += 0.60
+    drifted_test[:, 1] += 0.35
+    drifted_test[:, 2] -= 0.25
+    weights, bias = fit_logistic_regression(x_train_scaled, y_train)
+    drift_pred, drift_prob = classify_logistic(drifted_test, weights, bias, threshold=threshold)
+    return compute_metrics(y_test, drift_pred), drift_prob
+
+
+def save_drift_report(
+    test_window_ids: np.ndarray,
+    baseline_prob: np.ndarray,
+    drift_prob: np.ndarray,
+    y_test: np.ndarray,
+) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    with (OUTPUT_DIR / "drift_robustness.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["window_id", "baseline_probability", "drifted_probability", "actual_failure"])
+        for window_id, base_value, drift_value, actual in zip(
+            test_window_ids.tolist(),
+            baseline_prob.tolist(),
+            drift_prob.tolist(),
+            y_test.tolist(),
+        ):
+            writer.writerow([window_id, f"{base_value:.6f}", f"{drift_value:.6f}", actual])
 
 
 def save_plots(
@@ -205,7 +261,36 @@ def main() -> None:
 
     mahalanobis_metrics = compute_metrics(y_test, mahalanobis_pred)
     logistic_metrics = compute_metrics(y_test, logistic_pred)
+    logistic_cost = business_cost(y_test, logistic_pred)
+    mahalanobis_cost = business_cost(y_test, mahalanobis_pred)
+    drift_metrics, drift_prob = evaluate_sensor_drift(x_train_scaled, x_test_scaled, y_train, y_test, best_threshold)
     save_reports(test_window_ids, logistic_prob, y_test, threshold_scores)
+    save_model_comparison(
+        [
+            (
+                "mahalanobis",
+                mahalanobis_metrics.precision,
+                mahalanobis_metrics.recall,
+                mahalanobis_metrics.f1,
+                mahalanobis_cost,
+            ),
+            (
+                "logistic_regression",
+                logistic_metrics.precision,
+                logistic_metrics.recall,
+                logistic_metrics.f1,
+                logistic_cost,
+            ),
+            (
+                "logistic_with_sensor_drift",
+                drift_metrics.precision,
+                drift_metrics.recall,
+                drift_metrics.f1,
+                business_cost(y_test, (drift_prob >= best_threshold).astype(int)),
+            ),
+        ]
+    )
+    save_drift_report(test_window_ids, logistic_prob, drift_prob, y_test)
     save_plots(test_window_ids, y_test, logistic_prob, test_health_scores, mahalanobis_threshold)
 
     ranked_features = sorted(zip(feature_names, weights), key=lambda item: abs(item[1]), reverse=True)
@@ -232,6 +317,15 @@ def main() -> None:
         f"f1={logistic_metrics.f1:.3f}"
     )
     print(f"  confusion(tp, fp, tn, fn)={logistic_metrics.confusion}")
+    print(f"  business_cost={logistic_cost:.1f}")
+    print()
+    print("Drift robustness check:")
+    print(
+        f"  precision={drift_metrics.precision:.3f} "
+        f"recall={drift_metrics.recall:.3f} "
+        f"f1={drift_metrics.f1:.3f}"
+    )
+    print(f"  business_cost={business_cost(y_test, (drift_prob >= best_threshold).astype(int)):.1f}")
     print()
     print("Strongest logistic coefficients:")
     for name, value in ranked_features[:5]:
@@ -245,7 +339,13 @@ def main() -> None:
         )
     print()
     print(f"Saved plot: {OUTPUT_DIR / 'maintenance_diagnostics.png'}")
-    print(f"Saved tables: {OUTPUT_DIR / 'threshold_search.csv'}, {OUTPUT_DIR / 'test_alerts.csv'}")
+    print(
+        "Saved tables: "
+        f"{OUTPUT_DIR / 'threshold_search.csv'}, "
+        f"{OUTPUT_DIR / 'test_alerts.csv'}, "
+        f"{OUTPUT_DIR / 'model_comparison.csv'}, "
+        f"{OUTPUT_DIR / 'drift_robustness.csv'}"
+    )
 
 
 if __name__ == "__main__":

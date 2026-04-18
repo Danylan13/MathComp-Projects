@@ -2,78 +2,41 @@
 
 ![Tests](https://github.com/Danylan13/MathComp-Projects/actions/workflows/tests.yml/badge.svg)
 
-This repository contains five compact but data-driven projects built around realistic engineering analysis tasks. The focus is on mathematical modeling, numerical methods, signal and network analysis, and decision-making under uncertainty.
+This repository is a compact engineering showcase built around five data-driven mini-projects. The emphasis is on mathematical modeling, numerical methods, optimization, inference under uncertainty, and clear output artifacts that read like finished analytical work rather than classroom exercises.
 
-Each project includes:
+## What Is Inside
 
-- a concrete problem statement
-- input data stored in the repository
-- reproducible Python code
-- quantitative evaluation
-- generated output artifacts such as plots or diagnostics
-- concise documentation of methods and assumptions
+- 5 self-contained projects with data, code, documentation, and generated artifacts
+- benchmark tables, robustness checks, and scenario analysis
+- a root launcher that rebuilds everything end-to-end
+- a repository-level dashboard that summarizes all projects in one place
 
-## Projects
+## Project Index
 
-| Project | Problem | Main Methods |
+| Project | Focus | Strongest additions |
 | --- | --- | --- |
-| `01_energy_load_forecasting` | Forecast short-term energy demand from weather and industrial activity data | time-series features, ridge regression, walk-forward evaluation |
-| `02_predictive_maintenance` | Predict equipment failures from aggregated sensor windows | Mahalanobis distance, logistic regression, classification metrics |
-| `03_network_reliability` | Route telecom traffic through a network under latency, capacity, and outage constraints | graph search, constrained routing, reliability scoring |
-| `04_portfolio_optimization` | Build and backtest a portfolio allocation from historical asset prices | return estimation, covariance modeling, grid-search optimization, tail risk |
-| `05_kalman_sensor_fusion` | Estimate a moving object's state from noisy GPS and IMU measurements | linear state-space models, Kalman filtering, RMSE analysis |
+| `01_energy_load_forecasting` | Time-series demand prediction | feature ablations, regime breakdown |
+| `02_predictive_maintenance` | Failure-risk scoring | business-cost comparison, sensor-drift stress test |
+| `03_network_reliability` | Reliability-aware routing | resilience summary, degraded-path check |
+| `04_portfolio_optimization` | Allocation and backtesting | rolling rebalancing with transaction costs |
+| `05_kalman_sensor_fusion` | State estimation | dropout robustness sweep, RTS smoothing |
 
-## Highlights
+## Repository Dashboard
 
-- energy forecasting improves test RMSE from `38.853 MW` to `15.314 MW`
-- predictive maintenance compares unsupervised monitoring against supervised classification
-- network reliability includes Monte Carlo availability checks for routed traffic
-- portfolio analysis exports efficient frontier and stress scenarios
-- sensor fusion compares raw GPS, Kalman filtering, and RTS smoothing
+The root-level dashboard aggregates the strongest headline metric from each project and shows either relative improvement or stress sensitivity.
 
-## Repository Layout
+![Repository Dashboard](outputs/overview_dashboard.png)
 
-```text
-MathComp-Projects/
-|-- README.md
-|-- requirements.txt
-|-- 01_energy_load_forecasting/
-|-- 02_predictive_maintenance/
-|-- 03_network_reliability/
-|-- 04_portfolio_optimization/
-`-- 05_kalman_sensor_fusion/
-```
+Generated overview artifacts:
 
-## Quick Start
+- `outputs/overview_dashboard.png`
+- `outputs/overview_metrics.csv`
 
-1. Create and activate a virtual environment.
-2. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-3. Run any project from the repository root:
-
-```bash
-python 01_energy_load_forecasting/src/forecasting_pipeline.py
-python 02_predictive_maintenance/src/maintenance_model.py
-python 03_network_reliability/src/network_analysis.py
-python 04_portfolio_optimization/src/portfolio_analysis.py
-python 05_kalman_sensor_fusion/src/kalman_fusion.py
-```
-
-Or generate and validate all project artifacts in one pass:
-
-```bash
-python run_all.py
-```
-
-## Project Gallery
+## Gallery
 
 ### 01 Energy Load Forecasting
 
-Short-term load prediction with time-series baselines, OLS, and ridge regression.
+Short-term load prediction with linear baselines, ridge regression, feature ablation, and regime-aware error analysis.
 
 ![Energy Load Forecasting](01_energy_load_forecasting/outputs/forecast_diagnostics.png)
 
@@ -83,7 +46,7 @@ Quick files:
 
 ### 02 Predictive Maintenance
 
-Failure-risk scoring from aggregated sensor windows with Mahalanobis distance and logistic regression.
+Failure prediction from industrial sensor windows with unsupervised monitoring, supervised classification, and drift robustness checks.
 
 ![Predictive Maintenance](02_predictive_maintenance/outputs/maintenance_diagnostics.png)
 
@@ -93,7 +56,7 @@ Quick files:
 
 ### 03 Network Reliability
 
-Reliability-aware routing on a constrained backbone network with Monte Carlo availability checks.
+Constraint-aware telecom routing with reliability scoring, Monte Carlo availability checks, and scenario resilience reporting.
 
 ![Network Reliability](03_network_reliability/outputs/network_paths.png)
 
@@ -103,7 +66,7 @@ Quick files:
 
 ### 04 Portfolio Optimization
 
-Backtested allocation with efficient frontier export, tail-risk metrics, and stress scenarios.
+Optimization and backtesting under tail-risk constraints with efficient frontier export and rolling rebalancing.
 
 ![Portfolio Optimization](04_portfolio_optimization/outputs/portfolio_backtest.png)
 
@@ -113,7 +76,7 @@ Quick files:
 
 ### 05 Kalman Sensor Fusion
 
-Trajectory reconstruction with Kalman filtering, RTS smoothing, and dropout robustness checks.
+Trajectory reconstruction from noisy sensors with filtering, smoothing, and dropout stress scenarios.
 
 ![Kalman Sensor Fusion](05_kalman_sensor_fusion/outputs/trajectory_comparison.png)
 
@@ -121,24 +84,36 @@ Quick files:
 - [README](05_kalman_sensor_fusion/README.md)
 - [Results](05_kalman_sensor_fusion/RESULTS.md)
 
-## Design Principles
+## Quick Start
 
-- keep every project self-contained
-- use transparent numerical methods instead of black-box tooling
-- prefer measurable outputs over visual polish
-- document assumptions directly in code and README files
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Run all projects and rebuild every tracked artifact:
+
+```bash
+python run_all.py
+```
+
+You can also regenerate only the repository-level overview after the project outputs exist:
+
+```bash
+python build_dashboard.py
+```
+
+## Engineering Signals
+
+- explicit baselines instead of only reporting the final model
+- scenario stress tests and robustness checks
+- reproducible CSV outputs for inspection outside Python
+- unit tests and CI for core numerical helpers
+- compact plots that make performance differences easy to scan on GitHub
 
 ## Testing
-
-Run the unit test suite from the repository root:
 
 ```bash
 python -m unittest discover -s tests
 ```
-
-## Possible Extensions
-
-- introduce richer datasets or public benchmarks
-- export results to figures and reports
-- compare current baselines against more advanced models
-- package the projects as small interactive demos

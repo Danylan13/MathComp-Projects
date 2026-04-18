@@ -30,6 +30,11 @@ After the routing decision is made, the selected paths are also evaluated with a
 - All six traffic requests remain feasible across the tested operating scenarios
 - Reliability-aware routing achieves end-to-end path reliability around `0.94` to `0.95`
 - Simulated path availability closely matches analytical reliability, validating the link-failure model
+- The project now exports a resilience table with hop counts, degraded-path reliability, and redundancy gap against latency-only routing
+
+## Why It Matters
+
+Backbone routing is not only about finding a feasible path once. The stronger question is how fragile the chosen route becomes under degraded conditions, and this project now makes that tradeoff explicit.
 
 ## Benchmarks
 
@@ -39,7 +44,7 @@ After the routing decision is made, the selected paths are also evaluated with a
 | maintenance | Dnipro -> Warsaw | 36.0 | 0.9476 | 0.9492 |
 | peak | Odessa -> Berlin | 45.0 | 0.9447 | 0.9480 |
 
-The full scenario table is available in [RESULTS.md](RESULTS.md) and `outputs/route_summary.csv`, including comparison against latency-only routing.
+The full scenario table is available in [RESULTS.md](RESULTS.md), `outputs/route_summary.csv`, and `outputs/scenario_resilience.csv`, including comparison against latency-only routing.
 
 ## Run
 
@@ -57,5 +62,6 @@ The script reports:
 - path reliability
 - Monte Carlo availability estimate and route summary table
 - comparison against latency-only feasible routing
+- resilience summary under degraded reliability assumptions
 - infeasible requests, if any
 - saved topology plot in `outputs/network_paths.png`

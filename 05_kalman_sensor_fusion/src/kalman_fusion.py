@@ -112,6 +112,30 @@ def rmse(reference: np.ndarray, estimate: np.ndarray) -> float:
     return float(np.sqrt(np.mean(np.sum((reference - estimate) ** 2, axis=1))))
 
 
+def save_robustness_summary(
+    measurements: np.ndarray,
+    true_positions: np.ndarray,
+) -> list[tuple[str, float]]:
+    scenarios = [
+        ("baseline_filter", 0),
+        ("gps_dropout_every_3", 3),
+        ("gps_dropout_every_5", 5),
+        ("gps_dropout_every_8", 8),
+    ]
+    rows: list[tuple[str, float]] = []
+    for name, every in scenarios:
+        estimates, _, _, _, _ = run_kalman_filter(measurements, gps_dropout_every=every)
+        rows.append((name, rmse(true_positions, estimates[:, :2])))
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    with (OUTPUT_DIR / "robustness_summary.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["scenario", "position_rmse"])
+        for name, value in rows:
+            writer.writerow([name, f"{value:.6f}"])
+    return rows
+
+
 def save_plots(
     true_positions: np.ndarray, gps_positions: np.ndarray, filtered_positions: np.ndarray, smoothed_positions: np.ndarray
 ) -> None:
@@ -189,6 +213,7 @@ def main() -> None:
     smoother_gain = (filtered_rmse - smoothed_rmse) / filtered_rmse * 100.0
     save_state_estimates(measurements, filtered_positions, smoothed_positions, dropout_positions)
     save_plots(true_positions, gps_positions, filtered_positions, smoothed_positions)
+    robustness_rows = save_robustness_summary(measurements, true_positions)
 
     print("Kalman Sensor Fusion")
     print("-" * 72)
@@ -199,6 +224,10 @@ def main() -> None:
     print(f"Relative improvement: {improvement:.2f}%")
     print(f"Smoother gain over filter: {smoother_gain:.2f}%")
     print()
+    print("Dropout robustness sweep:")
+    for scenario, value in robustness_rows:
+        print(f"  {scenario:<20} rmse={value:.3f}")
+    print()
     print("State snapshots:")
     for idx in [0, 1, 2, len(estimates) - 3, len(estimates) - 2, len(estimates) - 1]:
         state = estimates[idx]
@@ -208,7 +237,7 @@ def main() -> None:
         )
     print()
     print(f"Saved plot: {OUTPUT_DIR / 'trajectory_comparison.png'}")
-    print(f"Saved table: {OUTPUT_DIR / 'state_estimates.csv'}")
+    print(f"Saved tables: {OUTPUT_DIR / 'state_estimates.csv'}, {OUTPUT_DIR / 'robustness_summary.csv'}")
 
 
 if __name__ == "__main__":

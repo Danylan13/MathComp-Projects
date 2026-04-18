@@ -1,0 +1,5 @@
+scenario,position_rmse
+baseline_filter,1.578887
+gps_dropout_every_3,1.578479
+gps_dropout_every_5,1.606594
+gps_dropout_every_8,1.621077

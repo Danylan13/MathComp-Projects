@@ -1,0 +1,4 @@
+strategy,annual_return,annual_vol,var95,cvar95,max_drawdown,sharpe_ratio
+optimized_static,0.335886,0.018019,0.000830,0.000883,-0.004259,15.381709
+equal_weight,0.422149,0.031190,0.002116,0.002275,-0.011666,10.894919
+rolling_rebalanced_costed,0.263994,0.018275,0.000853,0.000968,-0.004737,12.136206

@@ -35,6 +35,12 @@ The model is a ridge regressor evaluated on a walk-forward split. A small time-s
 - Ridge regression improves test RMSE from `38.853 MW` for the lag-24 baseline to `15.314 MW`
 - Test MAPE drops from `8.909%` to `3.388%`
 - Validation chooses `alpha = 10.0` from a time-series regularization search
+- Feature ablation shows that removing weather variables and calendar structure degrades forecast quality materially
+- The project now exports a regime-level breakdown for peak, commute, night, and regular operating periods
+
+## Why It Matters
+
+This is closer to a real energy analytics workflow than a toy regression notebook: it includes baselines, validation, ablations, and error behavior under different operating regimes.
 
 ## Benchmarks
 
@@ -45,7 +51,7 @@ The model is a ridge regressor evaluated on a walk-forward split. A small time-s
 | Ordinary least squares | 18.724 | 4.270% |
 | Ridge regression | 15.314 | 3.388% |
 
-Detailed benchmark artifacts are saved in [RESULTS.md](RESULTS.md), `outputs/alpha_search.csv`, and `outputs/benchmark_summary.csv`.
+Detailed benchmark artifacts are saved in [RESULTS.md](RESULTS.md), `outputs/alpha_search.csv`, `outputs/benchmark_summary.csv`, `outputs/feature_ablation.csv`, and `outputs/regime_breakdown.csv`.
 
 ## Run
 
@@ -60,6 +66,8 @@ The script reports:
 - baseline vs model RMSE and MAPE
 - selected regularization strength and alpha search table
 - benchmark summary table across baseline and linear models
+- feature ablation results for reduced model variants
+- regime-level error summary for different load conditions
 - the most influential coefficients
 - the final 24-hour forecast window
 - saved diagnostic plot in `outputs/forecast_diagnostics.png`

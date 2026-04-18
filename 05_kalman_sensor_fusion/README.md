@@ -31,6 +31,11 @@ The project compares:
 - The filter remains stable under periodic GPS dropout, with RMSE `1.607`
 - RTS smoothing reduces RMSE further to `1.206`
 - The smoother improves on the filtered trajectory by `23.62%`
+- A robustness sweep now compares several dropout schedules to quantify degradation under harsher sensing conditions
+
+## Why It Matters
+
+Sensor fusion is valuable when measurements become noisy, intermittent, or unreliable. The added robustness sweep makes that practical engineering point much clearer than a single filtered trajectory plot.
 
 ## Benchmarks
 
@@ -41,7 +46,7 @@ The project compares:
 | Kalman filter with GPS dropout | 1.607 |
 | RTS smoother | 1.206 |
 
-See [RESULTS.md](RESULTS.md) and `outputs/state_estimates.csv` for the trajectory summary.
+See [RESULTS.md](RESULTS.md), `outputs/state_estimates.csv`, and `outputs/robustness_summary.csv` for the trajectory summary.
 
 ## Run
 
@@ -55,6 +60,7 @@ The script reports:
 
 - raw and filtered RMSE
 - smoothed RMSE and smoother gain over the filter
+- dropout robustness summary across multiple missing-GPS schedules
 - state estimates at the start and end of the trajectory
 - improvement from sensor fusion
 - saved trajectory plot in `outputs/trajectory_comparison.png`

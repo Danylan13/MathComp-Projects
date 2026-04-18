@@ -177,6 +177,11 @@ def simulate_path_availability(report: PathReport, trials: int = 5000, seed: int
     return float(np.mean(outcomes < report.reliability))
 
 
+def degraded_path_reliability(report: PathReport, penalty: float = 0.02) -> float:
+    edge_count = max(len(report.nodes) - 1, 1)
+    return max(0.0, report.reliability - penalty * edge_count)
+
+
 def save_route_summary(reports: list[PathReport]) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     with (OUTPUT_DIR / "route_summary.csv").open("w", newline="", encoding="utf-8") as handle:
@@ -209,6 +214,37 @@ def save_route_summary(reports: list[PathReport]) -> None:
                     f"{simulate_path_availability(report, seed=17 + index):.6f}",
                     "" if latency_baseline is None else " -> ".join(latency_baseline.nodes),
                     "" if latency_baseline is None else f"{latency_baseline.reliability:.6f}",
+                ]
+            )
+
+
+def save_resilience_summary(reports: list[PathReport]) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    with (OUTPUT_DIR / "scenario_resilience.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            [
+                "scenario",
+                "origin",
+                "destination",
+                "hop_count",
+                "analytic_reliability",
+                "degraded_reliability",
+                "redundancy_gap",
+            ]
+        )
+        for report in reports:
+            latency_baseline = getattr(report, "latency_baseline", None)
+            baseline_reliability = report.reliability if latency_baseline is None else latency_baseline.reliability
+            writer.writerow(
+                [
+                    report.scenario,
+                    report.origin,
+                    report.destination,
+                    len(report.nodes) - 1,
+                    f"{report.reliability:.6f}",
+                    f"{degraded_path_reliability(report):.6f}",
+                    f"{(report.reliability - baseline_reliability):.6f}",
                 ]
             )
 
@@ -291,9 +327,10 @@ def main() -> None:
 
     if chosen_paths:
         save_route_summary(chosen_paths)
+        save_resilience_summary(chosen_paths)
         save_network_plot(base_graph, chosen_paths)
         print(f"Saved plot: {OUTPUT_DIR / 'network_paths.png'}")
-        print(f"Saved table: {OUTPUT_DIR / 'route_summary.csv'}")
+        print(f"Saved tables: {OUTPUT_DIR / 'route_summary.csv'}, {OUTPUT_DIR / 'scenario_resilience.csv'}")
 
 
 if __name__ == "__main__":

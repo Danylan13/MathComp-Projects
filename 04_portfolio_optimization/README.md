@@ -34,6 +34,11 @@ The project:
 - Annualized volatility falls from `0.0312` for equal-weight to `0.0180` for the optimized portfolio
 - Maximum drawdown improves from `-0.0117` to `-0.0043`
 - The portfolio plot also shows the discrete efficient frontier with optimized and equal-weight points highlighted
+- A rolling rebalancing variant with transaction costs is now included as a tougher benchmark
+
+## Why It Matters
+
+Static optimized weights can look good in a small backtest and still fail to hold up in practice. Adding rolling rebalancing and trading costs makes the project much closer to a realistic quantitative workflow.
 
 ## Benchmarks
 
@@ -42,7 +47,7 @@ The project:
 | Equal-weight | 0.4221 | 0.0312 | 0.0021 | 0.0023 | -0.0117 |
 | Optimized | 0.3359 | 0.0180 | 0.0008 | 0.0009 | -0.0043 |
 
-See [RESULTS.md](RESULTS.md), `outputs/efficient_frontier.csv`, and `outputs/stress_test.csv` for richer comparisons.
+See [RESULTS.md](RESULTS.md), `outputs/efficient_frontier.csv`, `outputs/stress_test.csv`, and `outputs/strategy_comparison.csv` for richer comparisons.
 
 ## Run
 
@@ -57,5 +62,6 @@ The script reports:
 - optimized weights
 - benchmark comparison
 - out-of-sample tail-risk metrics
+- rolling rebalanced benchmark with transaction costs
 - backtest wealth trajectory summary
 - saved backtest plot in `outputs/portfolio_backtest.png`

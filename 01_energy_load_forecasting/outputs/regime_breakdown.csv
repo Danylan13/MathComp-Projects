@@ -1,0 +1,5 @@
+regime,samples,lag24_rmse_mw,ridge_rmse_mw,ridge_bias_mw
+night_valley,6,38.153030,18.420436,-18.322021
+regular,9,40.122552,12.455772,-12.050513
+commute_peak,4,43.593132,17.910416,-17.645843
+peak_day,5,32.882232,13.515485,-13.159079

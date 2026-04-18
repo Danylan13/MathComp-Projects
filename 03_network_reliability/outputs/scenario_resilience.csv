@@ -1,0 +1,7 @@
+scenario,origin,destination,hop_count,analytic_reliability,degraded_reliability,redundancy_gap
+baseline,Kyiv,Berlin,2,0.948660,0.908660,0.000000
+baseline,Odessa,Warsaw,2,0.948612,0.908612,0.000000
+maintenance,Kyiv,Berlin,2,0.948660,0.908660,0.000000
+maintenance,Dnipro,Warsaw,2,0.947570,0.907570,0.000000
+peak,Kharkiv,Berlin,2,0.941660,0.901660,0.000000
+peak,Odessa,Berlin,2,0.944748,0.904748,0.000000

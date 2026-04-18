@@ -113,6 +113,14 @@ def mape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     return float(np.mean(np.abs((y_true - y_pred) / y_true)) * 100)
 
 
+def r2_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    total = float(np.sum((y_true - y_true.mean()) ** 2))
+    residual = float(np.sum((y_true - y_pred) ** 2))
+    if total == 0.0:
+        return 0.0
+    return 1.0 - residual / total
+
+
 def tune_alpha(
     x_train: np.ndarray, y_train: np.ndarray, feature_names: list[str], candidates: list[float]
 ) -> tuple[float, list[tuple[float, float]]]:
@@ -157,6 +165,100 @@ def save_benchmark_table(rows: list[tuple[str, float, float]]) -> None:
         writer.writerow(["method", "rmse_mw", "mape_pct"])
         for name, rmse_value, mape_value in rows:
             writer.writerow([name, f"{rmse_value:.6f}", f"{mape_value:.6f}"])
+
+
+def feature_subset_indices(feature_names: list[str], dropped_features: set[str]) -> list[int]:
+    return [index for index, name in enumerate(feature_names) if name not in dropped_features]
+
+
+def evaluate_feature_ablation(
+    x_train: np.ndarray,
+    x_test: np.ndarray,
+    y_train: np.ndarray,
+    y_test: np.ndarray,
+    feature_names: list[str],
+    alpha: float,
+) -> list[tuple[str, float, float, float]]:
+    ablations = [
+        ("full_model", set()),
+        ("no_weather", {"temperature_c", "humidity_pct", "wind_kph"}),
+        ("no_calendar", {"sin_hour", "cos_hour", "sin_dayofweek", "cos_dayofweek", "is_holiday"}),
+        ("no_peak_flags", {"is_morning_peak", "is_evening_peak"}),
+        ("lags_only", {"temperature_c", "humidity_pct", "wind_kph", "industrial_index", "time_index",
+                       "sin_hour", "cos_hour", "sin_dayofweek", "cos_dayofweek", "is_holiday",
+                       "is_morning_peak", "is_evening_peak"}),
+    ]
+    rows: list[tuple[str, float, float, float]] = []
+    for label, dropped in ablations:
+        indices = feature_subset_indices(feature_names, dropped)
+        selected_names = [feature_names[index] for index in indices]
+        x_train_subset = x_train[:, indices]
+        x_test_subset = x_test[:, indices]
+        x_train_scaled, x_test_scaled = standardize(x_train_subset, x_test_subset)
+        model = fit_ridge_regression(x_train_scaled, y_train, selected_names, alpha=alpha)
+        predictions = predict(x_test_scaled, model)
+        rows.append((label, rmse(y_test, predictions), mape(y_test, predictions), r2_score(y_test, predictions)))
+    return rows
+
+
+def save_ablation_table(rows: list[tuple[str, float, float, float]]) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    with (OUTPUT_DIR / "feature_ablation.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["configuration", "rmse_mw", "mape_pct", "r2"])
+        for label, rmse_value, mape_value, r2_value in rows:
+            writer.writerow([label, f"{rmse_value:.6f}", f"{mape_value:.6f}", f"{r2_value:.6f}"])
+
+
+def classify_energy_regimes(labels: np.ndarray, actual: np.ndarray) -> list[tuple[str, str]]:
+    threshold = float(np.quantile(actual, 0.80))
+    regimes: list[tuple[str, str]] = []
+    for label, value in zip(labels.tolist(), actual.tolist()):
+        hour = int(label[-5:-3])
+        if value >= threshold:
+            regime = "peak_day"
+        elif 0 <= hour <= 5:
+            regime = "night_valley"
+        elif 7 <= hour <= 10 or 18 <= hour <= 21:
+            regime = "commute_peak"
+        else:
+            regime = "regular"
+        regimes.append((label, regime))
+    return regimes
+
+
+def save_regime_breakdown(
+    labels: np.ndarray,
+    actual: np.ndarray,
+    baseline: np.ndarray,
+    forecast: np.ndarray,
+) -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    grouped: dict[str, list[tuple[float, float, float]]] = {}
+    for (label, regime), y_true, lag24, ridge in zip(
+        classify_energy_regimes(labels, actual),
+        actual.tolist(),
+        baseline.tolist(),
+        forecast.tolist(),
+    ):
+        grouped.setdefault(regime, []).append((y_true, lag24, ridge))
+
+    with (OUTPUT_DIR / "regime_breakdown.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["regime", "samples", "lag24_rmse_mw", "ridge_rmse_mw", "ridge_bias_mw"])
+        for regime, values in grouped.items():
+            actual_values = np.asarray([item[0] for item in values])
+            lag24_values = np.asarray([item[1] for item in values])
+            ridge_values = np.asarray([item[2] for item in values])
+            writer.writerow(
+                [
+                    regime,
+                    len(values),
+                    f"{rmse(actual_values, lag24_values):.6f}",
+                    f"{rmse(actual_values, ridge_values):.6f}",
+                    f"{float(np.mean(ridge_values - actual_values)):.6f}",
+                ]
+            )
 
 
 def save_plots(labels: np.ndarray, y_true: np.ndarray, baseline: np.ndarray, forecast: np.ndarray) -> None:
@@ -216,6 +318,16 @@ def main() -> None:
         ("ridge_regression", rmse(y_test, model_pred), mape(y_test, model_pred)),
     ]
     save_benchmark_table(benchmark_rows)
+    ablation_rows = evaluate_feature_ablation(
+        x_train,
+        x_test,
+        y_train,
+        y_test,
+        feature_names,
+        alpha=best_alpha,
+    )
+    save_ablation_table(ablation_rows)
+    save_regime_breakdown(test_labels, y_test, baseline_pred, model_pred)
 
     ranked_coefficients = sorted(
         zip(model.feature_names, model.weights),
@@ -249,7 +361,13 @@ def main() -> None:
         )
     print()
     print(f"Saved plot: {OUTPUT_DIR / 'forecast_diagnostics.png'}")
-    print(f"Saved tables: {OUTPUT_DIR / 'alpha_search.csv'}, {OUTPUT_DIR / 'benchmark_summary.csv'}")
+    print(
+        "Saved tables: "
+        f"{OUTPUT_DIR / 'alpha_search.csv'}, "
+        f"{OUTPUT_DIR / 'benchmark_summary.csv'}, "
+        f"{OUTPUT_DIR / 'feature_ablation.csv'}, "
+        f"{OUTPUT_DIR / 'regime_breakdown.csv'}"
+    )
 
 
 if __name__ == "__main__":

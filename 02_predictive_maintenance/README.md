@@ -36,6 +36,12 @@ The classifier threshold is not fixed by hand: it is selected on a validation sl
 - Logistic regression outperforms the Mahalanobis detector on F1 score: `0.571` vs `0.400`
 - The selected logistic threshold is `0.30`
 - The model preserves full recall on the test split while reducing false alarms relative to the unsupervised detector
+- A cost-sensitive view shows the classifier reduces operational false-alarm burden compared with the baseline detector
+- A sensor-drift stress test demonstrates how classification quality degrades under calibration shift
+
+## Why It Matters
+
+Real predictive maintenance systems are judged by missed failures, unnecessary interventions, and sensor drift. This project now exposes all three dimensions instead of reporting only a single classification score.
 
 ## Benchmarks
 
@@ -44,7 +50,7 @@ The classifier threshold is not fixed by hand: it is selected on a validation sl
 | Mahalanobis detector | 0.250 | 1.000 | 0.400 |
 | Logistic regression | 0.400 | 1.000 | 0.571 |
 
-See [RESULTS.md](RESULTS.md), `outputs/threshold_search.csv`, and `outputs/test_alerts.csv` for the detailed comparison.
+See [RESULTS.md](RESULTS.md), `outputs/threshold_search.csv`, `outputs/test_alerts.csv`, `outputs/model_comparison.csv`, and `outputs/drift_robustness.csv` for the detailed comparison.
 
 ## Run
 
@@ -59,6 +65,8 @@ The script reports:
 - precision, recall, and F1 score
 - selected logistic threshold and threshold search table
 - confusion matrices for both methods
+- business-cost comparison across methods
+- drift robustness table with baseline vs shifted probabilities
 - the highest-risk windows in the test segment
 - saved diagnostic plot in `outputs/maintenance_diagnostics.png`
 - includes a threshold-sweep view of test-set F1 behavior

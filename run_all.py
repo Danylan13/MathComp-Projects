@@ -25,6 +25,8 @@ PROJECTS = [
             ROOT / "01_energy_load_forecasting" / "outputs" / "forecast_diagnostics.png",
             ROOT / "01_energy_load_forecasting" / "outputs" / "alpha_search.csv",
             ROOT / "01_energy_load_forecasting" / "outputs" / "benchmark_summary.csv",
+            ROOT / "01_energy_load_forecasting" / "outputs" / "feature_ablation.csv",
+            ROOT / "01_energy_load_forecasting" / "outputs" / "regime_breakdown.csv",
         ],
     ),
     ProjectRun(
@@ -34,6 +36,8 @@ PROJECTS = [
             ROOT / "02_predictive_maintenance" / "outputs" / "maintenance_diagnostics.png",
             ROOT / "02_predictive_maintenance" / "outputs" / "threshold_search.csv",
             ROOT / "02_predictive_maintenance" / "outputs" / "test_alerts.csv",
+            ROOT / "02_predictive_maintenance" / "outputs" / "model_comparison.csv",
+            ROOT / "02_predictive_maintenance" / "outputs" / "drift_robustness.csv",
         ],
     ),
     ProjectRun(
@@ -42,6 +46,7 @@ PROJECTS = [
         expected_outputs=[
             ROOT / "03_network_reliability" / "outputs" / "network_paths.png",
             ROOT / "03_network_reliability" / "outputs" / "route_summary.csv",
+            ROOT / "03_network_reliability" / "outputs" / "scenario_resilience.csv",
         ],
     ),
     ProjectRun(
@@ -51,6 +56,7 @@ PROJECTS = [
             ROOT / "04_portfolio_optimization" / "outputs" / "portfolio_backtest.png",
             ROOT / "04_portfolio_optimization" / "outputs" / "efficient_frontier.csv",
             ROOT / "04_portfolio_optimization" / "outputs" / "stress_test.csv",
+            ROOT / "04_portfolio_optimization" / "outputs" / "strategy_comparison.csv",
         ],
     ),
     ProjectRun(
@@ -59,6 +65,15 @@ PROJECTS = [
         expected_outputs=[
             ROOT / "05_kalman_sensor_fusion" / "outputs" / "trajectory_comparison.png",
             ROOT / "05_kalman_sensor_fusion" / "outputs" / "state_estimates.csv",
+            ROOT / "05_kalman_sensor_fusion" / "outputs" / "robustness_summary.csv",
+        ],
+    ),
+    ProjectRun(
+        name="Repository Dashboard",
+        script=ROOT / "build_dashboard.py",
+        expected_outputs=[
+            ROOT / "outputs" / "overview_metrics.csv",
+            ROOT / "outputs" / "overview_dashboard.png",
         ],
     ),
 ]

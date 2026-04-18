@@ -84,6 +84,38 @@ def annualized_summary(simple_returns: np.ndarray) -> tuple[float, float, float,
     return annual_return, annual_vol, var_95, cvar_95
 
 
+def sharpe_ratio(simple_returns: np.ndarray, risk_free_daily: float = 0.00005) -> float:
+    excess = simple_returns - risk_free_daily
+    vol = float(excess.std())
+    if vol == 0.0:
+        return 0.0
+    return float(np.sqrt(252) * excess.mean() / vol)
+
+
+def rolling_backtest(
+    returns: np.ndarray,
+    train_window: int,
+    transaction_cost_bps: float = 8.0,
+) -> tuple[np.ndarray, np.ndarray]:
+    weights_history: list[np.ndarray] = []
+    daily_returns: list[float] = []
+    previous_weights = np.full(returns.shape[1], 1.0 / returns.shape[1])
+    cost_scale = transaction_cost_bps / 10000.0
+
+    for index in range(train_window, len(returns)):
+        train_slice = returns[index - train_window : index]
+        weights = choose_min_variance_portfolio(train_slice)
+        turnover = float(np.sum(np.abs(weights - previous_weights)))
+        gross_simple = float(np.exp(returns[index] @ weights) - 1.0)
+        net_simple = gross_simple - turnover * cost_scale
+        weights_history.append(weights)
+        daily_returns.append(net_simple)
+        previous_weights = weights
+
+    wealth = np.cumprod(1.0 + np.asarray(daily_returns))
+    return np.asarray(daily_returns), wealth
+
+
 def frontier_points(train_returns: np.ndarray) -> list[tuple[float, float, tuple[float, ...]]]:
     covariance = np.cov(train_returns, rowvar=False)
     mean_returns = train_returns.mean(axis=0)
@@ -95,7 +127,12 @@ def frontier_points(train_returns: np.ndarray) -> list[tuple[float, float, tuple
     return points
 
 
-def save_tables(asset_names: list[str], optimized_weights: np.ndarray, points: list[tuple[float, float, tuple[float, ...]]]) -> None:
+def save_tables(
+    asset_names: list[str],
+    optimized_weights: np.ndarray,
+    points: list[tuple[float, float, tuple[float, ...]]],
+    strategy_rows: list[tuple[str, float, float, float, float, float, float]],
+) -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     with (OUTPUT_DIR / "efficient_frontier.csv").open("w", newline="", encoding="utf-8") as handle:
@@ -114,6 +151,14 @@ def save_tables(asset_names: list[str], optimized_weights: np.ndarray, points: l
         writer.writerow(["scenario", "optimized_return"])
         for name, vector in stress_scenarios.items():
             writer.writerow([name, f"{float(optimized_weights @ vector):.6f}"])
+
+    with (OUTPUT_DIR / "strategy_comparison.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            ["strategy", "annual_return", "annual_vol", "var95", "cvar95", "max_drawdown", "sharpe_ratio"]
+        )
+        for row in strategy_rows:
+            writer.writerow([row[0], *[f"{value:.6f}" for value in row[1:]]])
 
 
 def save_plots(
@@ -176,11 +221,42 @@ def main() -> None:
 
     optimized_simple, optimized_wealth = backtest(test_returns, optimized_weights)
     equal_simple, equal_wealth = backtest(test_returns, equal_weights)
+    rolling_simple, rolling_wealth = rolling_backtest(returns, train_window=30)
 
     optimized_summary = annualized_summary(optimized_simple)
     equal_summary = annualized_summary(equal_simple)
+    rolling_summary = annualized_summary(rolling_simple)
     points = frontier_points(train_returns)
-    save_tables(asset_names, optimized_weights, points)
+    strategy_rows = [
+        (
+            "optimized_static",
+            optimized_summary[0],
+            optimized_summary[1],
+            optimized_summary[2],
+            optimized_summary[3],
+            max_drawdown(optimized_wealth),
+            sharpe_ratio(optimized_simple),
+        ),
+        (
+            "equal_weight",
+            equal_summary[0],
+            equal_summary[1],
+            equal_summary[2],
+            equal_summary[3],
+            max_drawdown(equal_wealth),
+            sharpe_ratio(equal_simple),
+        ),
+        (
+            "rolling_rebalanced_costed",
+            rolling_summary[0],
+            rolling_summary[1],
+            rolling_summary[2],
+            rolling_summary[3],
+            max_drawdown(rolling_wealth),
+            sharpe_ratio(rolling_simple),
+        ),
+    ]
+    save_tables(asset_names, optimized_weights, points, strategy_rows)
     save_plots(optimized_wealth, equal_wealth, points, optimized_weights, equal_weights)
 
     print("Portfolio Optimization and Risk")
@@ -202,13 +278,25 @@ def main() -> None:
         f"VaR95={equal_summary[2]:.4f} CVaR95={equal_summary[3]:.4f} "
         f"max_drawdown={max_drawdown(equal_wealth):.4f}"
     )
+    print(
+        f"  rolling    annual_return={rolling_summary[0]:.4f} "
+        f"annual_vol={rolling_summary[1]:.4f} "
+        f"VaR95={rolling_summary[2]:.4f} CVaR95={rolling_summary[3]:.4f} "
+        f"max_drawdown={max_drawdown(rolling_wealth):.4f}"
+    )
     print()
     print("Final wealth on test window:")
     print(f"  optimized={optimized_wealth[-1]:.4f}")
     print(f"  equal-wt ={equal_wealth[-1]:.4f}")
+    print(f"  rolling  ={rolling_wealth[-1]:.4f}")
     print()
     print(f"Saved plot: {OUTPUT_DIR / 'portfolio_backtest.png'}")
-    print(f"Saved tables: {OUTPUT_DIR / 'efficient_frontier.csv'}, {OUTPUT_DIR / 'stress_test.csv'}")
+    print(
+        "Saved tables: "
+        f"{OUTPUT_DIR / 'efficient_frontier.csv'}, "
+        f"{OUTPUT_DIR / 'stress_test.csv'}, "
+        f"{OUTPUT_DIR / 'strategy_comparison.csv'}"
+    )
 
 
 if __name__ == "__main__":
