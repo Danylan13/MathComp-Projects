@@ -63,6 +63,64 @@ python 04_portfolio_optimization/src/portfolio_analysis.py
 python 05_kalman_sensor_fusion/src/kalman_fusion.py
 ```
 
+Or generate and validate all project artifacts in one pass:
+
+```bash
+python run_all.py
+```
+
+## Project Gallery
+
+### 01 Energy Load Forecasting
+
+Short-term load prediction with time-series baselines, OLS, and ridge regression.
+
+![Energy Load Forecasting](01_energy_load_forecasting/outputs/forecast_diagnostics.png)
+
+Quick files:
+- [README](01_energy_load_forecasting/README.md)
+- [Results](01_energy_load_forecasting/RESULTS.md)
+
+### 02 Predictive Maintenance
+
+Failure-risk scoring from aggregated sensor windows with Mahalanobis distance and logistic regression.
+
+![Predictive Maintenance](02_predictive_maintenance/outputs/maintenance_diagnostics.png)
+
+Quick files:
+- [README](02_predictive_maintenance/README.md)
+- [Results](02_predictive_maintenance/RESULTS.md)
+
+### 03 Network Reliability
+
+Reliability-aware routing on a constrained backbone network with Monte Carlo availability checks.
+
+![Network Reliability](03_network_reliability/outputs/network_paths.png)
+
+Quick files:
+- [README](03_network_reliability/README.md)
+- [Results](03_network_reliability/RESULTS.md)
+
+### 04 Portfolio Optimization
+
+Backtested allocation with efficient frontier export, tail-risk metrics, and stress scenarios.
+
+![Portfolio Optimization](04_portfolio_optimization/outputs/portfolio_backtest.png)
+
+Quick files:
+- [README](04_portfolio_optimization/README.md)
+- [Results](04_portfolio_optimization/RESULTS.md)
+
+### 05 Kalman Sensor Fusion
+
+Trajectory reconstruction with Kalman filtering, RTS smoothing, and dropout robustness checks.
+
+![Kalman Sensor Fusion](05_kalman_sensor_fusion/outputs/trajectory_comparison.png)
+
+Quick files:
+- [README](05_kalman_sensor_fusion/README.md)
+- [Results](05_kalman_sensor_fusion/RESULTS.md)
+
 ## Design Principles
 
 - keep every project self-contained
