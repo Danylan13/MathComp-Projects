@@ -48,10 +48,15 @@ Sensor fusion is valuable when measurements become noisy, intermittent, or unrel
 
 See [RESULTS.md](RESULTS.md), `outputs/state_estimates.csv`, and `outputs/robustness_summary.csv` for the trajectory summary.
 
+Additional visualization:
+
+- `outputs/dropout_sensitivity.png` for RMSE sensitivity to different GPS-dropout schedules
+
 ## Run
 
 ```bash
 python 05_kalman_sensor_fusion/src/kalman_fusion.py
+python 05_kalman_sensor_fusion/src/kalman_fusion.py --dropout-sweep 2 4 6 8
 ```
 
 ## Output
@@ -64,3 +69,4 @@ The script reports:
 - state estimates at the start and end of the trajectory
 - improvement from sensor fusion
 - saved trajectory plot in `outputs/trajectory_comparison.png`
+- saved dropout sensitivity plot in `outputs/dropout_sensitivity.png`

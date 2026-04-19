@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import argparse
+import csv
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-import csv
 
 import matplotlib
 import numpy as np
@@ -12,8 +13,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
-DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "energy_load.csv"
-OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs"
+DEFAULT_DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "energy_load.csv"
+DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs"
 
 
 @dataclass
@@ -23,14 +24,13 @@ class RidgeModel:
     feature_names: list[str]
 
 
-def load_dataset() -> np.ndarray:
-    return np.genfromtxt(DATA_PATH, delimiter=",", names=True, dtype=None, encoding="utf-8")
+def load_dataset(data_path: Path) -> np.ndarray:
+    return np.genfromtxt(data_path, delimiter=",", names=True, dtype=None, encoding="utf-8")
 
 
 def build_design_matrix(raw: np.ndarray) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray]:
     timestamps = [datetime.fromisoformat(value) for value in raw["timestamp"]]
     loads = raw["load_mw"].astype(float)
-
     rows: list[list[float]] = []
     targets: list[float] = []
     labels: list[str] = []
@@ -147,26 +147,6 @@ def tune_alpha(
     return best_alpha, metrics
 
 
-def save_validation_metrics(metrics: list[tuple[float, float]]) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    csv_path = OUTPUT_DIR / "alpha_search.csv"
-    with csv_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["alpha", "validation_rmse"])
-        for alpha, value in metrics:
-            writer.writerow([alpha, f"{value:.6f}"])
-
-
-def save_benchmark_table(rows: list[tuple[str, float, float]]) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    csv_path = OUTPUT_DIR / "benchmark_summary.csv"
-    with csv_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["method", "rmse_mw", "mape_pct"])
-        for name, rmse_value, mape_value in rows:
-            writer.writerow([name, f"{rmse_value:.6f}", f"{mape_value:.6f}"])
-
-
 def feature_subset_indices(feature_names: list[str], dropped_features: set[str]) -> list[int]:
     return [index for index, name in enumerate(feature_names) if name not in dropped_features]
 
@@ -184,9 +164,23 @@ def evaluate_feature_ablation(
         ("no_weather", {"temperature_c", "humidity_pct", "wind_kph"}),
         ("no_calendar", {"sin_hour", "cos_hour", "sin_dayofweek", "cos_dayofweek", "is_holiday"}),
         ("no_peak_flags", {"is_morning_peak", "is_evening_peak"}),
-        ("lags_only", {"temperature_c", "humidity_pct", "wind_kph", "industrial_index", "time_index",
-                       "sin_hour", "cos_hour", "sin_dayofweek", "cos_dayofweek", "is_holiday",
-                       "is_morning_peak", "is_evening_peak"}),
+        (
+            "lags_only",
+            {
+                "temperature_c",
+                "humidity_pct",
+                "wind_kph",
+                "industrial_index",
+                "time_index",
+                "sin_hour",
+                "cos_hour",
+                "sin_dayofweek",
+                "cos_dayofweek",
+                "is_holiday",
+                "is_morning_peak",
+                "is_evening_peak",
+            },
+        ),
     ]
     rows: list[tuple[str, float, float, float]] = []
     for label, dropped in ablations:
@@ -199,15 +193,6 @@ def evaluate_feature_ablation(
         predictions = predict(x_test_scaled, model)
         rows.append((label, rmse(y_test, predictions), mape(y_test, predictions), r2_score(y_test, predictions)))
     return rows
-
-
-def save_ablation_table(rows: list[tuple[str, float, float, float]]) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    with (OUTPUT_DIR / "feature_ablation.csv").open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["configuration", "rmse_mw", "mape_pct", "r2"])
-        for label, rmse_value, mape_value, r2_value in rows:
-            writer.writerow([label, f"{rmse_value:.6f}", f"{mape_value:.6f}", f"{r2_value:.6f}"])
 
 
 def classify_energy_regimes(labels: np.ndarray, actual: np.ndarray) -> list[tuple[str, str]]:
@@ -227,15 +212,43 @@ def classify_energy_regimes(labels: np.ndarray, actual: np.ndarray) -> list[tupl
     return regimes
 
 
+def save_validation_metrics(metrics: list[tuple[float, float]], output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with (output_dir / "alpha_search.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["alpha", "validation_rmse"])
+        for alpha, value in metrics:
+            writer.writerow([alpha, f"{value:.6f}"])
+
+
+def save_benchmark_table(rows: list[tuple[str, float, float]], output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with (output_dir / "benchmark_summary.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["method", "rmse_mw", "mape_pct"])
+        for name, rmse_value, mape_value in rows:
+            writer.writerow([name, f"{rmse_value:.6f}", f"{mape_value:.6f}"])
+
+
+def save_ablation_table(rows: list[tuple[str, float, float, float]], output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with (output_dir / "feature_ablation.csv").open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["configuration", "rmse_mw", "mape_pct", "r2"])
+        for label, rmse_value, mape_value, r2_value in rows:
+            writer.writerow([label, f"{rmse_value:.6f}", f"{mape_value:.6f}", f"{r2_value:.6f}"])
+
+
 def save_regime_breakdown(
     labels: np.ndarray,
     actual: np.ndarray,
     baseline: np.ndarray,
     forecast: np.ndarray,
+    output_dir: Path,
 ) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     grouped: dict[str, list[tuple[float, float, float]]] = {}
-    for (label, regime), y_true, lag24, ridge in zip(
+    for (_, regime), y_true, lag24, ridge in zip(
         classify_energy_regimes(labels, actual),
         actual.tolist(),
         baseline.tolist(),
@@ -243,7 +256,7 @@ def save_regime_breakdown(
     ):
         grouped.setdefault(regime, []).append((y_true, lag24, ridge))
 
-    with (OUTPUT_DIR / "regime_breakdown.csv").open("w", newline="", encoding="utf-8") as handle:
+    with (output_dir / "regime_breakdown.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(["regime", "samples", "lag24_rmse_mw", "ridge_rmse_mw", "ridge_bias_mw"])
         for regime, values in grouped.items():
@@ -261,10 +274,9 @@ def save_regime_breakdown(
             )
 
 
-def save_plots(labels: np.ndarray, y_true: np.ndarray, baseline: np.ndarray, forecast: np.ndarray) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+def save_main_plot(labels: np.ndarray, y_true: np.ndarray, baseline: np.ndarray, forecast: np.ndarray, output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
     x_axis = np.arange(len(labels))
-
     fig, axes = plt.subplots(2, 1, figsize=(11, 8), constrained_layout=True)
     axes[0].plot(x_axis, y_true, label="actual", linewidth=2.2, color="#1f3c88")
     axes[0].plot(x_axis, baseline, label="lag24 baseline", linestyle="--", color="#c0392b")
@@ -285,15 +297,38 @@ def save_plots(labels: np.ndarray, y_true: np.ndarray, baseline: np.ndarray, for
     axes[1].set_xticks(x_axis[::3], labels[::3], rotation=30, ha="right")
     axes[1].legend()
     axes[1].grid(alpha=0.25)
-
-    fig.savefig(OUTPUT_DIR / "forecast_diagnostics.png", dpi=160)
+    fig.savefig(output_dir / "forecast_diagnostics.png", dpi=160)
     plt.close(fig)
 
 
+def save_feature_plot(model: RidgeModel, output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    ranked = sorted(zip(model.feature_names, model.weights), key=lambda item: abs(item[1]), reverse=True)[:8]
+    names = [item[0] for item in ranked]
+    values = np.asarray([item[1] for item in ranked])
+    colors = np.where(values >= 0.0, "#117a65", "#c0392b")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.barh(names[::-1], values[::-1], color=colors[::-1])
+    ax.set_title("Top Standardized Ridge Coefficients")
+    ax.set_xlabel("Coefficient value")
+    ax.grid(axis="x", alpha=0.25)
+    fig.savefig(output_dir / "feature_importance.png", dpi=160, bbox_inches="tight")
+    plt.close(fig)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Energy load forecasting with ridge regression and ablation studies.")
+    parser.add_argument("--data-path", type=Path, default=DEFAULT_DATA_PATH, help="Path to the input CSV dataset.")
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Directory for generated outputs.")
+    parser.add_argument("--test-window", type=int, default=24, help="Number of final samples used as test window.")
+    return parser.parse_args()
+
+
 def main() -> None:
-    raw = load_dataset()
+    args = parse_args()
+    raw = load_dataset(args.data_path)
     x, y, feature_names, labels = build_design_matrix(raw)
-    split_index = len(x) - 24
+    split_index = len(x) - args.test_window
 
     x_train, x_test = x[:split_index], x[split_index:]
     y_train, y_test = y[:split_index], y[split_index:]
@@ -302,39 +337,30 @@ def main() -> None:
     x_train_scaled, x_test_scaled = standardize(x_train, x_test)
     alpha_candidates = [0.05, 0.1, 0.4, 1.0, 3.0, 10.0, 25.0]
     best_alpha, validation_metrics = tune_alpha(x_train, y_train, feature_names, alpha_candidates)
-    save_validation_metrics(validation_metrics)
+    save_validation_metrics(validation_metrics, args.output_dir)
+
     model = fit_ridge_regression(x_train_scaled, y_train, feature_names, alpha=best_alpha)
     ols_model = fit_ordinary_least_squares(x_train_scaled, y_train, feature_names)
 
     lag24_pred = x_test[:, -1]
     lag1_pred = x_test[:, -2]
     ols_pred = predict(x_test_scaled, ols_model)
-    baseline_pred = x_test[:, -1]
     model_pred = predict(x_test_scaled, model)
+
     benchmark_rows = [
         ("lag_24_baseline", rmse(y_test, lag24_pred), mape(y_test, lag24_pred)),
         ("lag_1_baseline", rmse(y_test, lag1_pred), mape(y_test, lag1_pred)),
         ("ordinary_least_squares", rmse(y_test, ols_pred), mape(y_test, ols_pred)),
         ("ridge_regression", rmse(y_test, model_pred), mape(y_test, model_pred)),
     ]
-    save_benchmark_table(benchmark_rows)
-    ablation_rows = evaluate_feature_ablation(
-        x_train,
-        x_test,
-        y_train,
-        y_test,
-        feature_names,
-        alpha=best_alpha,
-    )
-    save_ablation_table(ablation_rows)
-    save_regime_breakdown(test_labels, y_test, baseline_pred, model_pred)
+    ablation_rows = evaluate_feature_ablation(x_train, x_test, y_train, y_test, feature_names, alpha=best_alpha)
+    save_benchmark_table(benchmark_rows, args.output_dir)
+    save_ablation_table(ablation_rows, args.output_dir)
+    save_regime_breakdown(test_labels, y_test, lag24_pred, model_pred, args.output_dir)
+    save_main_plot(test_labels, y_test, lag24_pred, model_pred, args.output_dir)
+    save_feature_plot(model, args.output_dir)
 
-    ranked_coefficients = sorted(
-        zip(model.feature_names, model.weights),
-        key=lambda item: abs(item[1]),
-        reverse=True,
-    )
-    save_plots(test_labels, y_test, baseline_pred, model_pred)
+    ranked_coefficients = sorted(zip(model.feature_names, model.weights), key=lambda item: abs(item[1]), reverse=True)
 
     print("Energy Load Forecasting")
     print("-" * 72)
@@ -354,19 +380,16 @@ def main() -> None:
         print(f"  {name:<16} {value:>10.3f}")
     print()
     print("Final 24-hour forecast window:")
-    for label, actual, baseline, forecast in zip(test_labels, y_test, baseline_pred, model_pred):
-        print(
-            f"  {label} | actual={actual:7.2f} | lag24={baseline:7.2f} "
-            f"| ridge={forecast:7.2f}"
-        )
+    for label, actual, baseline, forecast in zip(test_labels, y_test, lag24_pred, model_pred):
+        print(f"  {label} | actual={actual:7.2f} | lag24={baseline:7.2f} | ridge={forecast:7.2f}")
     print()
-    print(f"Saved plot: {OUTPUT_DIR / 'forecast_diagnostics.png'}")
+    print(f"Saved plots: {args.output_dir / 'forecast_diagnostics.png'}, {args.output_dir / 'feature_importance.png'}")
     print(
         "Saved tables: "
-        f"{OUTPUT_DIR / 'alpha_search.csv'}, "
-        f"{OUTPUT_DIR / 'benchmark_summary.csv'}, "
-        f"{OUTPUT_DIR / 'feature_ablation.csv'}, "
-        f"{OUTPUT_DIR / 'regime_breakdown.csv'}"
+        f"{args.output_dir / 'alpha_search.csv'}, "
+        f"{args.output_dir / 'benchmark_summary.csv'}, "
+        f"{args.output_dir / 'feature_ablation.csv'}, "
+        f"{args.output_dir / 'regime_breakdown.csv'}"
     )
 
 

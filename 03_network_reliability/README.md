@@ -46,10 +46,15 @@ Backbone routing is not only about finding a feasible path once. The stronger qu
 
 The full scenario table is available in [RESULTS.md](RESULTS.md), `outputs/route_summary.csv`, and `outputs/scenario_resilience.csv`, including comparison against latency-only routing.
 
+Additional visualization:
+
+- `outputs/scenario_comparison.png` for side-by-side reliability vs degraded-reliability comparison
+
 ## Run
 
 ```bash
 python 03_network_reliability/src/network_analysis.py
+python 03_network_reliability/src/network_analysis.py --peak-capacity-factor 0.7
 ```
 
 ## Output
@@ -65,3 +70,4 @@ The script reports:
 - resilience summary under degraded reliability assumptions
 - infeasible requests, if any
 - saved topology plot in `outputs/network_paths.png`
+- saved scenario comparison plot in `outputs/scenario_comparison.png`

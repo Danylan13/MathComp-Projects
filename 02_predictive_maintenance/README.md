@@ -52,10 +52,15 @@ Real predictive maintenance systems are judged by missed failures, unnecessary i
 
 See [RESULTS.md](RESULTS.md), `outputs/threshold_search.csv`, `outputs/test_alerts.csv`, `outputs/model_comparison.csv`, and `outputs/drift_robustness.csv` for the detailed comparison.
 
+Additional visualization:
+
+- `outputs/maintenance_tradeoffs.png` showing precision, recall, and business cost across threshold choices
+
 ## Run
 
 ```bash
 python 02_predictive_maintenance/src/maintenance_model.py
+python 02_predictive_maintenance/src/maintenance_model.py --drift-strength 0.7
 ```
 
 ## Output
@@ -70,3 +75,4 @@ The script reports:
 - the highest-risk windows in the test segment
 - saved diagnostic plot in `outputs/maintenance_diagnostics.png`
 - includes a threshold-sweep view of test-set F1 behavior
+- saved threshold trade-off plot in `outputs/maintenance_tradeoffs.png`

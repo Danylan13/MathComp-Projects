@@ -23,6 +23,7 @@ PROJECTS = [
         script=ROOT / "01_energy_load_forecasting" / "src" / "forecasting_pipeline.py",
         expected_outputs=[
             ROOT / "01_energy_load_forecasting" / "outputs" / "forecast_diagnostics.png",
+            ROOT / "01_energy_load_forecasting" / "outputs" / "feature_importance.png",
             ROOT / "01_energy_load_forecasting" / "outputs" / "alpha_search.csv",
             ROOT / "01_energy_load_forecasting" / "outputs" / "benchmark_summary.csv",
             ROOT / "01_energy_load_forecasting" / "outputs" / "feature_ablation.csv",
@@ -34,6 +35,7 @@ PROJECTS = [
         script=ROOT / "02_predictive_maintenance" / "src" / "maintenance_model.py",
         expected_outputs=[
             ROOT / "02_predictive_maintenance" / "outputs" / "maintenance_diagnostics.png",
+            ROOT / "02_predictive_maintenance" / "outputs" / "maintenance_tradeoffs.png",
             ROOT / "02_predictive_maintenance" / "outputs" / "threshold_search.csv",
             ROOT / "02_predictive_maintenance" / "outputs" / "test_alerts.csv",
             ROOT / "02_predictive_maintenance" / "outputs" / "model_comparison.csv",
@@ -45,6 +47,7 @@ PROJECTS = [
         script=ROOT / "03_network_reliability" / "src" / "network_analysis.py",
         expected_outputs=[
             ROOT / "03_network_reliability" / "outputs" / "network_paths.png",
+            ROOT / "03_network_reliability" / "outputs" / "scenario_comparison.png",
             ROOT / "03_network_reliability" / "outputs" / "route_summary.csv",
             ROOT / "03_network_reliability" / "outputs" / "scenario_resilience.csv",
         ],
@@ -54,6 +57,7 @@ PROJECTS = [
         script=ROOT / "04_portfolio_optimization" / "src" / "portfolio_analysis.py",
         expected_outputs=[
             ROOT / "04_portfolio_optimization" / "outputs" / "portfolio_backtest.png",
+            ROOT / "04_portfolio_optimization" / "outputs" / "strategy_risk_return.png",
             ROOT / "04_portfolio_optimization" / "outputs" / "efficient_frontier.csv",
             ROOT / "04_portfolio_optimization" / "outputs" / "stress_test.csv",
             ROOT / "04_portfolio_optimization" / "outputs" / "strategy_comparison.csv",
@@ -64,6 +68,7 @@ PROJECTS = [
         script=ROOT / "05_kalman_sensor_fusion" / "src" / "kalman_fusion.py",
         expected_outputs=[
             ROOT / "05_kalman_sensor_fusion" / "outputs" / "trajectory_comparison.png",
+            ROOT / "05_kalman_sensor_fusion" / "outputs" / "dropout_sensitivity.png",
             ROOT / "05_kalman_sensor_fusion" / "outputs" / "state_estimates.csv",
             ROOT / "05_kalman_sensor_fusion" / "outputs" / "robustness_summary.csv",
         ],

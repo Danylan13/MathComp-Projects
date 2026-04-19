@@ -8,8 +8,17 @@ This repository is a compact engineering showcase built around five data-driven 
 
 - 5 self-contained projects with data, code, documentation, and generated artifacts
 - benchmark tables, robustness checks, and scenario analysis
+- unified CLI entry points for every project
 - a root launcher that rebuilds everything end-to-end
 - a repository-level dashboard that summarizes all projects in one place
+- a Streamlit demo for interactive browsing
+
+## Skills Demonstrated
+
+- applied mathematics: regression, optimization, state-space modeling, Monte Carlo simulation, covariance analysis
+- computer engineering: reproducible pipelines, CLI tooling, benchmarking, artifact generation, scenario testing
+- data analysis: feature engineering, risk metrics, stress testing, calibration checks, model comparison
+- software quality: unit tests, CI, structured outputs, deterministic scripts
 
 ## Project Index
 
@@ -98,6 +107,12 @@ Run all projects and rebuild every tracked artifact:
 python run_all.py
 ```
 
+Launch the interactive app:
+
+```bash
+streamlit run streamlit_app.py
+```
+
 You can also regenerate only the repository-level overview after the project outputs exist:
 
 ```bash
@@ -109,6 +124,8 @@ python build_dashboard.py
 - explicit baselines instead of only reporting the final model
 - scenario stress tests and robustness checks
 - reproducible CSV outputs for inspection outside Python
+- consistent command-line interfaces across projects
+- an interactive app for recruiter-friendly browsing
 - unit tests and CI for core numerical helpers
 - compact plots that make performance differences easy to scan on GitHub
 

@@ -53,10 +53,15 @@ This is closer to a real energy analytics workflow than a toy regression noteboo
 
 Detailed benchmark artifacts are saved in [RESULTS.md](RESULTS.md), `outputs/alpha_search.csv`, `outputs/benchmark_summary.csv`, `outputs/feature_ablation.csv`, and `outputs/regime_breakdown.csv`.
 
+Additional visualization:
+
+- `outputs/feature_importance.png` for the strongest standardized ridge coefficients
+
 ## Run
 
 ```bash
 python 01_energy_load_forecasting/src/forecasting_pipeline.py
+python 01_energy_load_forecasting/src/forecasting_pipeline.py --output-dir 01_energy_load_forecasting/outputs
 ```
 
 ## Output
@@ -71,3 +76,4 @@ The script reports:
 - the most influential coefficients
 - the final 24-hour forecast window
 - saved diagnostic plot in `outputs/forecast_diagnostics.png`
+- saved feature-importance plot in `outputs/feature_importance.png`

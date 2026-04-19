@@ -49,10 +49,15 @@ Static optimized weights can look good in a small backtest and still fail to hol
 
 See [RESULTS.md](RESULTS.md), `outputs/efficient_frontier.csv`, `outputs/stress_test.csv`, and `outputs/strategy_comparison.csv` for richer comparisons.
 
+Additional visualization:
+
+- `outputs/strategy_risk_return.png` for return bars and a strategy-level risk-return map
+
 ## Run
 
 ```bash
 python 04_portfolio_optimization/src/portfolio_analysis.py
+python 04_portfolio_optimization/src/portfolio_analysis.py --transaction-cost-bps 10
 ```
 
 ## Output
@@ -65,3 +70,4 @@ The script reports:
 - rolling rebalanced benchmark with transaction costs
 - backtest wealth trajectory summary
 - saved backtest plot in `outputs/portfolio_backtest.png`
+- saved strategy comparison plot in `outputs/strategy_risk_return.png`

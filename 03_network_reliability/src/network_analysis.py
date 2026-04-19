@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import argparse
+import csv
 from dataclasses import dataclass
 from pathlib import Path
-import csv
 
 import matplotlib
 import numpy as np
@@ -11,9 +12,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
-EDGE_PATH = Path(__file__).resolve().parents[1] / "data" / "network_edges.csv"
-DEMAND_PATH = Path(__file__).resolve().parents[1] / "data" / "demand_scenarios.csv"
-OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs"
+DEFAULT_EDGE_PATH = Path(__file__).resolve().parents[1] / "data" / "network_edges.csv"
+DEFAULT_DEMAND_PATH = Path(__file__).resolve().parents[1] / "data" / "demand_scenarios.csv"
+DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[1] / "outputs"
 
 
 @dataclass
@@ -49,44 +50,38 @@ NODE_POSITIONS = {
 }
 
 
-def load_graph() -> dict[str, list[Edge]]:
-    raw = np.genfromtxt(EDGE_PATH, delimiter=",", names=True, dtype=None, encoding="utf-8")
+def load_graph(edge_path: Path) -> dict[str, list[Edge]]:
+    raw = np.genfromtxt(edge_path, delimiter=",", names=True, dtype=None, encoding="utf-8")
     graph: dict[str, list[Edge]] = {}
-
     for row in raw:
         source = str(row["source"])
         target = str(row["target"])
         latency = float(row["latency_ms"])
         failure = float(row["failure_prob"])
         capacity = float(row["capacity_mbps"])
-
         graph.setdefault(source, []).append(Edge(target, latency, failure, capacity))
         graph.setdefault(target, []).append(Edge(source, latency, failure, capacity))
-
     return graph
 
 
-def load_demands() -> np.ndarray:
-    return np.genfromtxt(DEMAND_PATH, delimiter=",", names=True, dtype=None, encoding="utf-8")
+def load_demands(demand_path: Path) -> np.ndarray:
+    return np.genfromtxt(demand_path, delimiter=",", names=True, dtype=None, encoding="utf-8")
 
 
-def apply_scenario(graph: dict[str, list[Edge]], scenario: str) -> dict[str, list[Edge]]:
+def apply_scenario(graph: dict[str, list[Edge]], scenario: str, peak_capacity_factor: float) -> dict[str, list[Edge]]:
     updated: dict[str, list[Edge]] = {
         node: [Edge(edge.target, edge.latency_ms, edge.failure_prob, edge.capacity_mbps) for edge in edges]
         for node, edges in graph.items()
     }
-
     if scenario == "maintenance":
         for node, target in [("Kyiv", "Dnipro"), ("Dnipro", "Kyiv")]:
             updated[node] = [edge for edge in updated[node] if edge.target != target]
-
     if scenario == "peak":
         for node, edges in updated.items():
             updated[node] = [
-                Edge(edge.target, edge.latency_ms, edge.failure_prob, edge.capacity_mbps * 0.75)
+                Edge(edge.target, edge.latency_ms, edge.failure_prob, edge.capacity_mbps * peak_capacity_factor)
                 for edge in edges
             ]
-
     return updated
 
 
@@ -102,7 +97,6 @@ def enumerate_paths(
         return [path.copy()]
     if len(path) > max_hops:
         return []
-
     results: list[list[str]] = []
     for edge in graph.get(current, []):
         if edge.target in visited:
@@ -119,13 +113,11 @@ def path_metrics(graph: dict[str, list[Edge]], nodes: list[str]) -> PathReport:
     latency = 0.0
     bottleneck = float("inf")
     reliability = 1.0
-
     for source, target in zip(nodes[:-1], nodes[1:]):
         edge = next(edge for edge in graph[source] if edge.target == target)
         latency += edge.latency_ms
         bottleneck = min(bottleneck, edge.capacity_mbps)
         reliability *= 1.0 - edge.failure_prob
-
     score = latency + 220.0 * (1.0 - reliability)
     return PathReport(nodes, latency, bottleneck, reliability, score)
 
@@ -136,18 +128,16 @@ def best_feasible_path(
     destination: str,
     required_mbps: float,
     max_latency_ms: float,
+    max_hops: int,
 ) -> PathReport | None:
-    candidates = enumerate_paths(graph, origin, destination, {origin}, [origin], max_hops=6)
+    candidates = enumerate_paths(graph, origin, destination, {origin}, [origin], max_hops=max_hops)
     feasible_reports = []
-
     for nodes in candidates:
         report = path_metrics(graph, nodes)
         if report.bottleneck_mbps >= required_mbps and report.latency_ms <= max_latency_ms:
             feasible_reports.append(report)
-
     if not feasible_reports:
         return None
-
     feasible_reports.sort(key=lambda report: (report.score, report.latency_ms, -report.bottleneck_mbps))
     return feasible_reports[0]
 
@@ -158,8 +148,9 @@ def best_latency_path(
     destination: str,
     required_mbps: float,
     max_latency_ms: float,
+    max_hops: int,
 ) -> PathReport | None:
-    candidates = enumerate_paths(graph, origin, destination, {origin}, [origin], max_hops=6)
+    candidates = enumerate_paths(graph, origin, destination, {origin}, [origin], max_hops=max_hops)
     feasible_reports = []
     for nodes in candidates:
         report = path_metrics(graph, nodes)
@@ -182,9 +173,9 @@ def degraded_path_reliability(report: PathReport, penalty: float = 0.02) -> floa
     return max(0.0, report.reliability - penalty * edge_count)
 
 
-def save_route_summary(reports: list[PathReport]) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    with (OUTPUT_DIR / "route_summary.csv").open("w", newline="", encoding="utf-8") as handle:
+def save_route_summary(reports: list[PathReport], output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with (output_dir / "route_summary.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(
             [
@@ -218,9 +209,9 @@ def save_route_summary(reports: list[PathReport]) -> None:
             )
 
 
-def save_resilience_summary(reports: list[PathReport]) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    with (OUTPUT_DIR / "scenario_resilience.csv").open("w", newline="", encoding="utf-8") as handle:
+def save_resilience_summary(reports: list[PathReport], output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with (output_dir / "scenario_resilience.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(
             [
@@ -249,11 +240,10 @@ def save_resilience_summary(reports: list[PathReport]) -> None:
             )
 
 
-def save_network_plot(base_graph: dict[str, list[Edge]], highlighted_paths: list[PathReport]) -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+def save_network_plot(base_graph: dict[str, list[Edge]], highlighted_paths: list[PathReport], output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(10, 6))
     drawn_edges: set[tuple[str, str]] = set()
-
     for source, edges in base_graph.items():
         x0, y0 = NODE_POSITIONS[source]
         for edge in edges:
@@ -278,42 +268,73 @@ def save_network_plot(base_graph: dict[str, list[Edge]], highlighted_paths: list
 
     ax.set_title("Network Topology with Selected Scenario Paths")
     ax.axis("off")
-    fig.savefig(OUTPUT_DIR / "network_paths.png", dpi=160, bbox_inches="tight")
+    fig.savefig(output_dir / "network_paths.png", dpi=160, bbox_inches="tight")
     plt.close(fig)
 
 
+def save_scenario_plot(reports: list[PathReport], output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    labels = [f"{report.scenario}:{report.origin}->{report.destination}" for report in reports]
+    reliabilities = np.asarray([report.reliability for report in reports])
+    degraded = np.asarray([degraded_path_reliability(report) for report in reports])
+    x = np.arange(len(reports))
+    width = 0.36
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax.bar(x - width / 2, reliabilities, width=width, color="#117a65", label="analytic reliability")
+    ax.bar(x + width / 2, degraded, width=width, color="#c0392b", label="degraded reliability")
+    ax.set_title("Scenario Reliability Comparison")
+    ax.set_ylabel("Reliability")
+    ax.set_xticks(x, labels, rotation=20, ha="right")
+    ax.legend()
+    ax.grid(axis="y", alpha=0.25)
+    fig.savefig(output_dir / "scenario_comparison.png", dpi=160, bbox_inches="tight")
+    plt.close(fig)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Reliability-aware network routing under scenario stress.")
+    parser.add_argument("--edge-path", type=Path, default=DEFAULT_EDGE_PATH, help="Path to edge list CSV.")
+    parser.add_argument("--demand-path", type=Path, default=DEFAULT_DEMAND_PATH, help="Path to demand scenario CSV.")
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Directory for generated outputs.")
+    parser.add_argument("--max-hops", type=int, default=6, help="Maximum number of hops in path enumeration.")
+    parser.add_argument(
+        "--peak-capacity-factor",
+        type=float,
+        default=0.75,
+        help="Capacity multiplier used in the peak-demand scenario.",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
-    base_graph = load_graph()
-    demands = load_demands()
+    args = parse_args()
+    base_graph = load_graph(args.edge_path)
+    demands = load_demands(args.demand_path)
     chosen_paths: list[PathReport] = []
 
     print("Network Reliability Analysis")
     print("-" * 72)
-
     for scenario in ["baseline", "maintenance", "peak"]:
-        scenario_graph = apply_scenario(base_graph, scenario)
+        scenario_graph = apply_scenario(base_graph, scenario, args.peak_capacity_factor)
         print(f"[Scenario: {scenario}]")
         scenario_demands = demands[demands["scenario"] == scenario]
-
         for demand in scenario_demands:
             origin = str(demand["origin"])
             destination = str(demand["destination"])
             required = float(demand["required_mbps"])
             max_latency = float(demand["max_latency_ms"])
-            report = best_feasible_path(scenario_graph, origin, destination, required, max_latency)
-
+            report = best_feasible_path(scenario_graph, origin, destination, required, max_latency, args.max_hops)
             if report is None:
                 print(
                     f"  {origin} -> {destination} | required={required:.0f} Mbps "
                     f"| max_latency={max_latency:.0f} ms | infeasible"
                 )
                 continue
-
             report.scenario = scenario
             report.origin = origin
             report.destination = destination
             report.latency_baseline = best_latency_path(
-                scenario_graph, origin, destination, required, max_latency
+                scenario_graph, origin, destination, required, max_latency, args.max_hops
             )
             chosen_paths.append(report)
             simulated_availability = simulate_path_availability(report, seed=17 + len(chosen_paths))
@@ -326,11 +347,16 @@ def main() -> None:
         print()
 
     if chosen_paths:
-        save_route_summary(chosen_paths)
-        save_resilience_summary(chosen_paths)
-        save_network_plot(base_graph, chosen_paths)
-        print(f"Saved plot: {OUTPUT_DIR / 'network_paths.png'}")
-        print(f"Saved tables: {OUTPUT_DIR / 'route_summary.csv'}, {OUTPUT_DIR / 'scenario_resilience.csv'}")
+        save_route_summary(chosen_paths, args.output_dir)
+        save_resilience_summary(chosen_paths, args.output_dir)
+        save_network_plot(base_graph, chosen_paths, args.output_dir)
+        save_scenario_plot(chosen_paths, args.output_dir)
+        print(
+            f"Saved plots: {args.output_dir / 'network_paths.png'}, {args.output_dir / 'scenario_comparison.png'}"
+        )
+        print(
+            f"Saved tables: {args.output_dir / 'route_summary.csv'}, {args.output_dir / 'scenario_resilience.csv'}"
+        )
 
 
 if __name__ == "__main__":
